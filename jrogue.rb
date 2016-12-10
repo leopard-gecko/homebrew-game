@@ -16,6 +16,7 @@ class Jrogue < Formula
                           "--disable-silent-rules",
                           "--with-ncurses",
                           "--with-program-name=jrogue",
+                          "--mandir=/usr/local/share/man/ja/man6",
                           "--prefix=#{prefix}"
     # system "cmake", ".", *std_cmake_args
     system "make", "install" # if this fails, try separate make/make install steps
