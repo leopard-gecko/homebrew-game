@@ -1,6 +1,6 @@
 class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
-  url "http://file.leopardgecko.blog.shinobi.jp/rogue545j.tar.gz"
+  url "http://file.leopardgecko.blog.shinobi.jp/jrogue.tar.gz"
   version "5.4.5J"
   sha256 "cbf813352d623b6b465b4958a04b37f04a645dfd1e7b38a23b9a605116e29ae4"
 
@@ -16,6 +16,7 @@ class Jrogue < Formula
                           "--disable-silent-rules",
                           "--with-ncurses",
                           "--with-program-name=jrogue",
+                          "--enable-scorefile=rogue.scr"
                           "--prefix=#{prefix}"
     # system "cmake", ".", *std_cmake_args
     system "make", "install" # if this fails, try separate make/make install steps
