@@ -16,7 +16,6 @@ class Jrogue < Formula
                           "--disable-silent-rules",
                           "--with-ncurses",
                           "--with-program-name=jrogue",
-                          "--enable-scorefile=rogue.scr",
                           "--prefix=#{prefix}"
     # system "cmake", ".", *std_cmake_args
     system "make", "install" # if this fails, try separate make/make install steps
