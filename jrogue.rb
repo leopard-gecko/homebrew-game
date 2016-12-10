@@ -18,7 +18,7 @@ class Jrogue < Formula
                           "--with-program-name=jrogue",
                           "--prefix=#{prefix}"
     # system "cmake", ".", *std_cmake_args
-    system "make", "make install" # if this fails, try separate make/make install steps
+    system "make", "install" # if this fails, try separate make/make install steps
   end
 
   test do
