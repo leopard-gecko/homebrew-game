@@ -1,6 +1,6 @@
 class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
-  url "http://file.leopardgecko.blog.shinobi.jp/jrogue.tar.gz"
+  url "http://file.leopardgecko.blog.shinobi.jp/jrogue001.tar.gz"
   version "5.4.5J"
   sha256 "b137ef336d6c9e78c2a19751d827351a75bc85456d00f3b6c49a43db814d4b87"
 
