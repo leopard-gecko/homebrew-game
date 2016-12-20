@@ -8,5 +8,5 @@ http://leopardgecko.zouri.jp/rogue.html
 $ brew tap leopard-gecko/game
 $ brew install jrogue
 ```
-# 動作確認
+## 動作確認
 - mac OS Sierra 10.12
