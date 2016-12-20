@@ -11,8 +11,6 @@ $ brew install jrogue
 
 和訳したmanページもインストールされますが、Macの標準の環境では日本語のmanページを適切に表示させることができません。他サイトを参照するなどして日本語に対応させると読むことができるようになります。（標準の環境を変えたくない等の場合は、上記ドキュメント内の「jrogue.cat」がmanページと同じものなので、そちらを参照してください）
 ## 必要環境
-Homebrew
-
-http://brew.sh/index_ja.html
+[Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
 macOS Sierra 10.12.2
