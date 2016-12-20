@@ -8,6 +8,7 @@ $ brew tap leopard-gecko/game
 $ brew install jrogue
 ```
 ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
+和訳したmanページもインストールされますが、Macの標準の環境では日本語のmanページを適切に表示させることができません。他サイトを参照するなどして日本語に対応させると読むことができるようになります。
 ## 必要環境
 Homebrew
 
