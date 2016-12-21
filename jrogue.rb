@@ -11,10 +11,7 @@ class Jrogue < Formula
     # ENV.deparallelize  # if your formula fails when building in parallel
 
     # Remove unrecognized options if warned by configure
-    system "./configure", "--disable-debug",
-                          "--disable-dependency-tracking",
-                          "--disable-silent-rules",
-                          "--with-program-name=jrogue",
+    system "./configure", "--with-program-name=jrogue",
                           "--mandir=/usr/local/share/man/ja/man6",
                           "--prefix=#{prefix}"
     # system "cmake", ".", *std_cmake_args
