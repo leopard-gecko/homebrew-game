@@ -1,4 +1,4 @@
-## jRogue（日本語版 Rogue 5.4）
+## jRogue（日本語版 Rogue 5.4）for macOS
 Rouge（ローグ）とは1980年に作られた最初期のRPGの一つで、一文字で表現されたキャラクターやプレイするたびにランダムに作られる迷宮などが特徴です。Rogueの最終版といわれるバージョン5.4を日本語化し、macOS Sierraで遊べるようにしてみました。ここにあるのはHomebrew用パッケージの説明ですが、他にGUI版もあります。詳しくは下記のURLを参照してください。
 
 http://leopardgecko.zouri.jp/rogue.html
