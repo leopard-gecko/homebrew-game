@@ -7,9 +7,22 @@ http://leopardgecko.zouri.jp/rogue.html
 $ brew tap leopard-gecko/game
 $ brew install jrogue
 ```
-ガイドやライセンスなどの各種ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
+遊び方やライセンスなどの各種ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
 
 和訳したmanページもインストールされますが、Macの標準の環境では日本語のmanページを適切に表示させることができません。他サイトを参照するなどして日本語に対応させると読むことができるようになります。（標準の環境を変えたくない等の場合は、上記ドキュメント内の「jrogue.cat」がmanページと同じものなので、そちらを参照してください）
+## 起動方法
+```
+$ jrogue
+```
+・プレイヤーの名前を変えたい場合は「-n」で指定する。
+```
+$ jrogue -n 名前
+```
+・GUI版でいうところの「通常」モードで起動したい場合は「-11」を加える。
+```
+$ jrogue -11
+```
+その他のオプションは付属のドキュメントを参照してください。
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
