@@ -28,11 +28,12 @@ $ jrogue -11
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。
 
-例えばGUI版の「通常モード」と同等の設定で起動したい場合は、
+例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名をleopardgeckoに指定する場合は、
 ```
-$ export ROGUEOPTS=passgo,color,idscrl
+$ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ```
 と入力します。
+もちろん .bashrc に記述してもらっても構いません。
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
