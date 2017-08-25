@@ -2,7 +2,7 @@ class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
   url "http://file.leopardgecko.blog.shinobi.jp/jrogue019.tar.gz"
   version "5.4.5J.019"
-  sha256 "2610239edabed6013ea49c7d6c27d02e87d481a3e818c70e037a68890bc64504"
+  sha256 "7a022b1bfc874f1d393b6b6948ef6f8094c13480eb20222dded0aec64d47bef3"
 
   # depends_on "cmake" => :build
 #  depends_on :x11 # if your formula requires any X11/XQuartz components
