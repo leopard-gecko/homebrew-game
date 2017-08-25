@@ -27,6 +27,7 @@ $ jrogue -11
 その他のオプションは付属のドキュメントを参照してください。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。
+
 例えばGUI版の「通常モード」と同等の設定で起動したい場合は、
 ```
 $ export ROGUEOPTS=passgo,color,idscrl
