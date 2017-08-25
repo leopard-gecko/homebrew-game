@@ -33,7 +33,7 @@ $ jrogue -11
 $ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ```
 と入力します。
-もちろん .bashrc に記述してもらっても構いません。
+もちろん .bashrc に記述しても設定が反映されます。
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
