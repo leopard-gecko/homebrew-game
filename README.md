@@ -26,8 +26,8 @@ $ jrogue -11
 ```
 その他のオプションは付属のドキュメントを参照してください。
 ## 遊び方
-詳細は[【運命の洞窟】へのガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)を参照してください。
-ゲーム中に「?」をタイプすればコマンドのヘルプを表示できます。
+詳細は[【運命の洞窟】へのガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)を参照してください。  
+また、ゲーム中に「?」をタイプすればコマンドのヘルプを表示できます。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。
 
