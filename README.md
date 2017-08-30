@@ -36,7 +36,7 @@ $ jrogue -11
 $ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ```
 と入力します。
-もちろん .bashrc に記述しても設定が反映されます。  
+もちろん .bashrc に記述しても設定が反映されます。  
 詳細は付属のドキュメントまたは[【運命の洞窟】へのガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)を参照してください。  
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
