@@ -25,6 +25,8 @@ $ jrogue -n 名前
 $ jrogue -11
 ```
 その他のオプションは付属のドキュメントを参照してください。
+## 遊び方
+[運命の洞窟のガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)を参照してください。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。
 
