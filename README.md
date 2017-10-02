@@ -43,11 +43,7 @@ $ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ## Tips
 スコアファイルはカレントディレクトリに作成される仕様ですが、jRogueを起動する前にスコアファイルがあるディレクトリに移動するのは面倒です。そこで以下のような記述を .bashrc に追加すればスコアファイルを書類フォルダに決め打ちすることができます。
 ```
-function myjrogue() {
-    pushd ~/Documents/;
-    jrogue $@;
-    popd;
-    }
+function myjrogue() { pushd ~/Documents/; jrogue $@; popd; }
 alias jrogue=myjrogue
 ```
 ## 必要環境
