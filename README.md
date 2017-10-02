@@ -45,7 +45,7 @@ $ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ```
 function myjrogue() {
     pushd ~/Documents/;
-    jrogue $1 $2;
+    jrogue $@;
     popd;
     }
 alias jrogue=myjrogue
