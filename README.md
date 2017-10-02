@@ -33,16 +33,14 @@ $ jrogue -11
 移動などのコマンドは英数モードでないと入力ができませんので注意してください。ゲーム中にテキストを入力するときには「かな」モードで日本語も入力できますが、ゲームの操作に戻ったら英数モードに切り替えてください。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。  
-例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名をleopardgeckoに指定する場合は、
+例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名をleopardgeckoに指定する場合は、 .bashrc に以下のように追記します。
+```sh
+export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 ```
-$ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
-```
-と入力します。
-これを .bashrc に記述しても設定が反映されます。 
 詳細は付属のドキュメントまたは[【運命の洞窟】へのガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)のオプションの項目を参照してください。  
 ## Tips
 スコアファイルはカレントディレクトリに作成される仕様ですが、jRogueを起動する前にスコアファイルがあるディレクトリに移動するのは面倒です。そこで以下のような記述を .bashrc に追加すればスコアファイルを書類フォルダに決め打ちすることができます。
-```
+```sh
 function myjrogue() { pushd ~/Documents/; jrogue $@; popd; }
 alias jrogue=myjrogue
 ```
