@@ -44,6 +44,13 @@ export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
 function myjrogue() { pushd ~/Documents/; jrogue $@; popd; }
 alias jrogue=myjrogue
 ```
+これの応用で、環境変数も含めて以下のように .bashrc に記述すると、GUI版の通常モードの設定かつメッセージが簡潔表示になってゲームがサクサク進み、スコアが書類フォルダに決め打ちになり、ゲームオーバーになっても繰り返しjRogueを遊ぶことが可能になります。Rogueをとことんやりこみたい方にお勧めの設定です。
+```sh
+export ROGUEOPTS="passgo,color,idscrl,terse"
+function myjrogue() { pushd ~/Documents/; jrogue $@; while true; do clear; echo もう一度遊びますか？ \( y または n \); read -sn 1 input; if [ $input = y ]; then jrogue $@; else echo それじゃあ、またね。; break; fi; done; popd; }
+alias jrogue=myjrogue
+```
+
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
