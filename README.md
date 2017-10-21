@@ -57,7 +57,7 @@ function myjrogue() {
         read -sn 1 input;
         if [ $input = y ]; then
             jrogue $@;
-        else
+        elif [ $input = n ];then
             echo それじゃあ、またね。;
             break;
         fi;
