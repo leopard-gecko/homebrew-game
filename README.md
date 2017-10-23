@@ -58,7 +58,7 @@ function myjrogue() {
         if [ $input = y ]; then
             jrogue $@;
         elif [ $input = n ];then
-            echo それじゃあ、またね。;
+            echo それでは、またね。;
             break;
         fi;
     done;
