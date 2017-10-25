@@ -8,7 +8,7 @@ http://leopardgecko.zouri.jp/rogue.html
 $ brew tap leopard-gecko/game
 $ brew install jrogue
 ```
-普通にインストールするとゲームの起動時に背景が黒に変わる仕様ですが、ゲーム中にも背景の色を変えたくない場合は以下のオプションを用いてインストールしてください。
+普通にインストールするとゲーム中にはターミナルの背景を黒に変更する仕様ですが、背景の色を変えたくない場合は以下のオプションを用いてインストールしてください。
 ```
 $ brew install jrogue --without-bg2black
 ```
