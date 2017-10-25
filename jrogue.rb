@@ -7,10 +7,11 @@ class Jrogue < Formula
   option "without-bg2black", "背景色を黒に変更しない"
 
   def install
-    
+    args = %W[
+      --prefix=#{prefix}
+      --mandir=/usr/local/share/man/ja/man6
+    ]
     args << "--enable-bg2black=no" if build.without? "bg2black"
-    args << "--mandir=/usr/local/share/man/ja/man6"
-    args << "--prefix=#{prefix}"
     
     system "./configure", *args
     system "make", "install" # if this fails, try separate make/make install steps
