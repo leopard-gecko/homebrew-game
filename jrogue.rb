@@ -1,20 +1,18 @@
 class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
-  url "http://file.leopardgecko.blog.shinobi.jp/jrogue025.tar.gz"
-  version "5.4.5J.025"
-  sha256 "966aeabd86f16c492e25c75c1b008b6ac1d581c6b82a47ca763d3077154f8efb"
+  url "http://file.leopardgecko.blog.shinobi.jp/jrogue026.tar.gz"
+  version "5.4.5J.026"
+  sha256 "0fc5cd240ff99317c6bfd1ec2325630415e199ea3ac97665d08935e17e19b114"
 
-  # depends_on "cmake" => :build
-#  depends_on :x11 # if your formula requires any X11/XQuartz components
+  option "without-bg2black", "背景色を黒に変更しない"
 
   def install
-    # ENV.deparallelize  # if your formula fails when building in parallel
-
-    # Remove unrecognized options if warned by configure
-    system "./configure", "--with-program-name=jrogue",
-                          "--mandir=/usr/local/share/man/ja/man6",
-                          "--prefix=#{prefix}"
-    # system "cmake", ".", *std_cmake_args
+    
+    args << ("--enable-bg2black=" + (build.with?("bg2black") ? "yes" : "no"))
+    args << "--mandir=/usr/local/share/man/ja/man6"
+    args << "--prefix=#{prefix}"
+    
+    system "./configure", *args
     system "make", "install" # if this fails, try separate make/make install steps
   end
 
