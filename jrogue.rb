@@ -1,7 +1,7 @@
 class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
   url "http://file.leopardgecko.blog.shinobi.jp/jrogue027.tar.gz"
-  version "5.4.5J.027"
+  version "5.4.5J.026"
   sha256 "bb321a574283df3689a49163a24227c6663e56729765b62948c3bf151e44833d"
 
   option "without-bg2black", "背景色を変更しない"
