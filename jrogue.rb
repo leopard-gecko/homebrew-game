@@ -13,17 +13,8 @@ class Jrogue < Formula
       --mandir=/usr/local/share/man/ja/man6
     ]
     
-    if build.without? "bg2black"
-      args << "--enable-bg2black=no"
-    else
-      args << "--enable-bg2black=yes"
-    end
-    
-    if build.without? "nocursor"
-      args << "--enable-nocursor=no"
-    else
-      args << "--enable-nocursor=yes"
-    end
+    args << ("--enable-bg2black=" + (build.without?("bg2black") ? "no" : "yes"))
+    args << ("--enable-nocursor=" + (build.without?("nocursor") ? "no" : "yes"))
     
     system "./configure", *args
     system "make", "install"
