@@ -8,6 +8,10 @@ http://leopardgecko.zouri.jp/rogue.html
 $ brew tap leopard-gecko/game
 $ brew install jrogue
 ```
+普通にインストールするとゲームの起動時に背景が黒に変わる仕様ですが、ゲーム中にも背景の色を変えたくない場合は以下のオプションを用いてインストールしてください。
+```
+$ brew install jrogue --without-bg2black
+```
 遊び方やライセンスなどの各種ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
 
 和訳したmanページもインストールされますが、Macの標準の環境では日本語のmanページを適切に表示させることができません。他サイトを参照するなどして日本語に対応させると読むことができるようになります。（標準の環境を変えたくない等の場合は、上記ドキュメント内の「jrogue.cat」がmanページと同じものなので、そちらを参照してください）
