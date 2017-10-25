@@ -8,7 +8,7 @@ class Jrogue < Formula
 
   def install
     
-    args << ("--enable-bg2black=" + (build.with?("bg2black") ? "yes" : "no"))
+    args << "--enable-bg2black=no" if build.without? "bg2black"
     args << "--mandir=/usr/local/share/man/ja/man6"
     args << "--prefix=#{prefix}"
     
