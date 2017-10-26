@@ -12,7 +12,7 @@ $ brew install jrogue
 ```
 $ brew install jrogue --without-bg2black
 ```
-また、ゲームのマップ内ではカーソルを消す仕様ですが、カーソルを常に表示したい場合は以下のオプションを用いてください。
+また、デフォルトではゲームのマップ内ではカーソルを表示しない仕様ですが、プレイヤーの位置にカーソルを表示したい場合は以下のオプションを用いてください。
 ```
 $ brew install jrogue --without-nocursor
 ```
