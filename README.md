@@ -41,9 +41,9 @@ $ jrogue -11
 移動などのコマンドは英数モードでないと入力ができませんので注意してください。ゲーム中にテキストを入力するときには「かな」モードで日本語も入力できますが、ゲームの操作に戻ったら英数モードに切り替えてください。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。  
-例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名をleopardgeckoに指定する場合は、 .bashrc に以下のように追記します。
+例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名を「ブルー・ミーニー」に指定し好きな果物を🍏 にしたい場合は、 .bashrc に以下のように追記します。（絵文字は後の文字が重なって表示されてしまうので、絵文字の後に空白スペースを一つ加えた方が良いでしょう）
 ```sh
-export ROGUEOPTS="passgo,color,idscrl,name=leopardgecko"
+export ROGUEOPTS="passgo,color,idscrl,name=ブルー・ミーニー,fruit=🍏 "
 ```
 詳細は付属のドキュメントまたは[【運命の洞窟】へのガイド](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E3%82%AC%E3%82%A4%E3%83%89.md)のオプションの項目を参照してください。  
 ## Tips
