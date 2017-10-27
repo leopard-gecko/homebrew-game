@@ -6,6 +6,7 @@ class Jrogue < Formula
 
   option "without-bg2black", "背景色を変更しない"
   option "without-nocursor", "カーソルを表示する"
+  option "with-wizardmode", "ウィザードモードあり"
 
   def install
     args = %W[
@@ -15,6 +16,7 @@ class Jrogue < Formula
     
     args << "--enable-bg2black=no" if build.without? "bg2black"
     args << "--enable-nocursor=no" if build.without? "nocursor"
+    args << "--enable-wizardmode" if build.with? "wizardmode"
     
     system "./configure", *args
     system "make", "install"
