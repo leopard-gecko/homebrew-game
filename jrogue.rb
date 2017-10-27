@@ -5,7 +5,7 @@ class Jrogue < Formula
   sha256 "bb321a574283df3689a49163a24227c6663e56729765b62948c3bf151e44833d"
 
   option "without-bg2black", "背景色を変更しない"
-  option "without-nocursor", "カーソルを表示する"
+  option "without-nocursor", "プレイヤーの位置でカーソルを表示する"
   option "with-wizardmode", "ウィザードモードあり"
 
   def install
