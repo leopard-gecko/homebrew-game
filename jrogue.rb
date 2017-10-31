@@ -1,11 +1,11 @@
 class Jrogue < Formula
   homepage "http://leopardgecko.zouri.jp/rogue.html"
-  url "http://file.leopardgecko.blog.shinobi.jp/jrogue028.tar.gz"
-  version "5.4.5J.028"
-  sha256 "129654e0191b024cc8b421da20a06486c22c569f18882ec28c2ee914a82bfadf"
+  url "http://file.leopardgecko.blog.shinobi.jp/jrogue029.tar.gz"
+  version "5.4.5J.029"
+  sha256 "c994ba1d84c756edbbbf88fdd432a9f3374152ee88870c16230c536b7db6743c"
 
   option "without-bg2black", "背景色を変更しない"
-  option "without-nocursor", "プレイヤーの位置でカーソルを表示する"
+  option "without-invcursor", "プレイヤーの位置でカーソルを表示する"
   option "with-wizardmode", "ウィザードモードあり"
 
   def install
@@ -15,7 +15,7 @@ class Jrogue < Formula
     ]
     
     args << "--enable-bg2black=no" if build.without? "bg2black"
-    args << "--enable-nocursor=no" if build.without? "nocursor"
+    args << "--enable-invcursor=no" if build.without? "invcursor"
     args << "--enable-wizardmode" if build.with? "wizardmode"
     
     system "./configure", *args
