@@ -18,7 +18,7 @@ $ brew options jrogue
 ```
 例：
 ```
-$ brew install jrogue --without-bg2black
+$ brew install jrogue --without-bg2black --without-invcursor
 ```
 
 - 「--without-bg2black」はゲーム中にターミナルの背景色を黒に変更しないためのオプションです。ターミナルで設定したお好きな背景色で遊びたい場合に指定してください。  
