@@ -83,4 +83,4 @@ alias jrogue=myjrogue
 ## 必要環境
 [Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
-macOS High Sierra 10.13.1
+macOS High Sierra 10.13.3
