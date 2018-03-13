@@ -2,7 +2,7 @@
 Rouge（ローグ）とは1980年に作られた最初期のRPGの一つで、一文字で表現されたキャラクターやプレイするたびにランダムに作られる迷宮などが特徴です。Rogueの最終版といわれるバージョン5.4を日本語化し、macOS Sierraで問題なく遊べるように調整しHomebrew用のパッケージとしてまとめました。Homebrewには英語版Rogueのパッケージがすでに存在しているため、こちらのパッケージはjRogueという名前にしています。
 
 ここにあるのはターミナルで使うCUI版です。他にクリック操作のみで起動できるGUI版も用意していますが、GUI版については下記のURLを参照してください。  
-http://leopardgecko.zouri.jp/rogue.html
+https://leopard-gecko.github.io/jrogue/
 ## インストール方法
 ```
 $ brew tap leopard-gecko/game
