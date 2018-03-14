@@ -5,8 +5,8 @@ Rouge（ローグ）とは1980年に作られた最初期のRPGの一つで、�
 https://leopard-gecko.github.io/jrogue/
 ## インストール方法
 ```
-$ brew tap leopard-gecko/game
-$ brew install jrogue
+brew tap leopard-gecko/game
+brew install jrogue
 ```
 遊び方やライセンスなどの各種ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
 
@@ -14,11 +14,11 @@ $ brew install jrogue
 #### インストール時のオプション
 以下のコマンドでインストール時に指定できるオプションが表示されます。
 ```
-$ brew options jrogue
+brew options jrogue
 ```
 例：
 ```
-$ brew install jrogue --without-bg2black --without-invcursor
+brew install jrogue --without-bg2black --without-invcursor
 ```
 
 - 「--without-bg2black」はゲーム中にターミナルの背景色を黒に変更しないためのオプションです。ターミナルで設定したお好きな背景色で遊びたい場合に指定してください。  
@@ -26,15 +26,15 @@ $ brew install jrogue --without-bg2black --without-invcursor
 - 「--with-wizardmode」はウィザードモードありでインストールします。あるコマンドの後にパスワードを入力すると強大な能力を持つ魔法使いになることができます。これは基本的にデバッグ用のモードなので詳細はあえてここには記載しません。  
 ## 起動方法
 ```
-$ jrogue
+jrogue
 ```
 ・プレイヤーの名前を変えたい場合は「-n」で指定する。
 ```
-$ jrogue -n 名前
+jrogue -n 名前
 ```
 ・GUI版でいうところの「通常」モードで起動したい場合は「-11」を加える。
 ```
-$ jrogue -11
+jrogue -11
 ```
 その他のオプションは付属のドキュメントを参照してください。
 
