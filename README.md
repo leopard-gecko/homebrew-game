@@ -3,6 +3,8 @@ Rouge（ローグ）とは1980年に作られた最初期のRPGの一つで、�
 
 ここにあるのはターミナルで使うCUI版です。他にクリック操作のみで起動できるGUI版も用意していますが、GUI版については下記のURLを参照してください。  
 https://leopard-gecko.github.io/jrogue/
+## 必要環境
+[Homebrew](http://brew.sh/index_ja.html)
 ## インストール方法
 ```
 brew tap leopard-gecko/game
@@ -79,8 +81,5 @@ function myjrogue() {
 }
 alias jrogue=myjrogue
 ```
-
-## 必要環境
-[Homebrew](http://brew.sh/index_ja.html)
 ## 動作確認
 macOS High Sierra 10.13.3
