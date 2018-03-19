@@ -1,8 +1,8 @@
 class Jrogue < Formula
-  homepage "http://leopardgecko.zouri.jp/rogue.html"
-  url "http://file.leopardgecko.blog.shinobi.jp/jrogue040.tar.gz"
-  version "5.4.5J.040"
-  sha256 "9e7eb4c59f1e7f8e1d044ed8ea978c0b6af5e06e4a32d16d8d7425e9ce3f53c0"
+  homepage "https://leopard-gecko.github.io/jrogue/"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5J.041/jrogue041.tar.gz"
+  version "5.4.5J.041"
+  sha256 "f17c7df1dbfcc01ddc92334c393d3421d174e42ea25802003133ecd69a22bd51"
 
   option "without-bg2black", "背景色を変更しない"
   option "without-invcursor", "プレイヤーの位置でカーソルを表示する"
