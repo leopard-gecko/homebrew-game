@@ -82,4 +82,4 @@ function myjrogue() {
 alias jrogue=myjrogue
 ```
 ## 動作確認
-macOS High Sierra 10.13.3
+macOS Mojave 10.14.2
