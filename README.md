@@ -48,18 +48,44 @@ jrogue -11
 移動などのコマンドは英数モードでないと入力ができませんので注意してください。ゲーム中にテキストを入力するときには「かな」モードで日本語も入力できますが、ゲームの操作に戻ったら英数モードに切り替えてください。
 ## 環境変数
 オプションは環境変数「ROGUEOPTS」で設定することも可能です。  
-例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名を「ブルー・ミーニー」に指定し好きな果物を🍏 にしたい場合は、 .bashrc に以下のように追記します。（ターミナルでは絵文字の後の文字が重なって表示されてしまうので、絵文字の後に空白スペースを一つ加えた方が良いでしょう）
+例えば、GUI版の「通常モード」と同等の設定にしてプレイヤー名を「ブルー・ミーニー」に指定し好きな果物を🍏 にしたい場合は、 .zshrc (お使いのシェルがbashの場合は .bashrc 。以下同様)に以下のように追記します。（ターミナルでは絵文字の後の文字が重なって表示されてしまうので、絵文字の後に空白スペースを一つ加えた方が良いでしょう）
 ```sh
 export ROGUEOPTS="passgo,color,idscrl,name=ブルー・ミーニー,fruit=🍏 "
 ```
 詳細は付属のドキュメントまたは[【運命の洞窟】への案内書](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E6%A1%88%E5%86%85%E6%9B%B8.md)のオプションの項目を参照してください。  
 ## Tips
-スコアファイルはカレントディレクトリに作成される仕様ですが、jRogueを起動する前にスコアファイルがあるディレクトリに移動するのは面倒です。そこで以下のような記述を .bashrc に追加すればjRogueの起動時のみ一時的に書類フォルダに移動するようになるのでスコアファイルを書類フォルダに決め打ちすることができます。引数も普通に使えます。jRogueが終了すれば自動的に元のディレクトリに戻ります。
+スコアファイルはカレントディレクトリに作成される仕様ですが、jRogueを起動する前にスコアファイルがあるディレクトリに移動するのは面倒です。そこで以下のような記述を .zshrc に追加すればjRogueの起動時のみ一時的に書類フォルダに移動するようになるのでスコアファイルを書類フォルダに決め打ちすることができます。引数も普通に使えます。jRogueが終了すれば自動的に元のディレクトリに戻ります。
 ```sh
 function myjrogue() { pushd ~/Documents/; jrogue $@; popd; }
 alias jrogue=myjrogue
 ```
-これの応用で、環境変数も含めて以下のように .bashrc に記述すると、GUI版の通常モードの設定かつメッセージが簡潔表示になってゲームがサクサク進み、スコアが書類フォルダに決め打ちになり、ゲームオーバーになっても繰り返しjRogueを遊ぶことが可能になります。Rogueをとことんやりこみたい方にお勧めの設定です。
+これの応用で、環境変数も含めて以下のように .zshrc に記述すると、GUI版の通常モードの設定かつメッセージが簡潔表示になってゲームがサクサク進み、スコアが書類フォルダに決め打ちになり、ゲームオーバーになっても繰り返しjRogueを遊ぶことが可能になります。Rogueをとことんやりこみたい方にお勧めの設定です。
+```sh
+export ROGUEOPTS="passgo,color,idscrl,terse"
+function myjrogue() {
+    pushd ~/Documents/;
+    jrogue $@;
+    while true;
+    do
+        clear;
+        echo もう一度遊びますか？ \( y または n \);
+        if read -qs; then
+            if [ $@ = "-r" ]; then
+                jrogue;
+            else
+            jrogue $@;
+        fi
+        else
+            echo それでは、またね。;
+            break;
+        fi;
+    done;
+    popd;
+}
+alias jrogue=myjrogue
+```
+
+お使いのシェルがbashの場合は、.bashrc の記述は以下のようになります。
 ```sh
 export ROGUEOPTS="passgo,color,idscrl,terse"
 function myjrogue() {
@@ -71,7 +97,11 @@ function myjrogue() {
         echo もう一度遊びますか？ \( y または n \);
         read -sn 1 input;
         if [ $input = y ]; then
+            if [ $@ = "-r" ]; then
+                jrogue;
+            else
             jrogue $@;
+        fi
         elif [ $input = n ];then
             echo それでは、またね。;
             break;
@@ -82,4 +112,4 @@ function myjrogue() {
 alias jrogue=myjrogue
 ```
 ## 動作確認
-macOS Mojave 10.14.2
+macOS Catalina バージョン 10.15
