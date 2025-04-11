@@ -114,4 +114,4 @@ function myjrogue() {
 alias jrogue=myjrogue
 ```
 ## 動作確認
-macOS Catalina バージョン 10.15
+macOS Sequoia 15.4
