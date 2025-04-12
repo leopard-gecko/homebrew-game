@@ -10,7 +10,7 @@ https://leopard-gecko.github.io/jrogue/
 brew tap leopard-gecko/game
 brew install jrogue
 ```
-遊び方やライセンスなどの各種ドキュメントは「/usr/local/share/doc/jrogue-5.4.5J/」にインストールされます。
+遊び方やライセンスなどの各種ドキュメントは「/opt/homebrew/Cellar/jrogue/5.4.5J.041/share/doc/jrogue-5.4.5J」（intel版の場合は「/usr/local/share/doc/jrogue-5.4.5J/」）にインストールされます。
 
 和訳したmanページもインストールされますが、Macの標準の環境では日本語のmanページを適切に表示させることができません。他サイトを参照するなどして日本語に対応させると読むことができるようになります。（標準の環境を変えたくない等の場合は、上記ドキュメント内の「jrogue.cat」がmanページと同じものなので、そちらを参照してください）
 <!-- 
