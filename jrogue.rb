@@ -1,22 +1,14 @@
 class Jrogue < Formula
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5J.041/jrogue041.tar.gz"
-  version "5.4.5J.041"
-  sha256 "f17c7df1dbfcc01ddc92334c393d3421d174e42ea25802003133ecd69a22bd51"
-
-  option "without-bg2black", "背景色を変更しない"
-  option "without-invcursor", "プレイヤーの位置でカーソルを表示する"
-  option "with-wizardmode", "ウィザードモードあり"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5J.043/jrogue043.tar.gz"
+  version "5.4.5J.043"
+  sha256 "94860183a12070c0466f3093dbb320f61130f3dce6fbd74198e2bc50a3414d1d"
 
   def install
     args = %W[
       --prefix=#{prefix}
       --mandir=/usr/local/share/man/ja/man6
     ]
-    
-    args << "--enable-bg2black=no" if build.without? "bg2black"
-    args << "--enable-invcursor=no" if build.without? "invcursor"
-    args << "--enable-wizardmode" if build.with? "wizardmode"
     
     system "./configure", *args
     system "make", "install"
