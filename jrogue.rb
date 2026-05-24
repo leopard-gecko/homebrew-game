@@ -1,5 +1,5 @@
 class Jrogue < Formula
-  desc "Jrogue: Rogue with Japanese support and enhancements"
+  desc "jRogue: Rogue with Japanese support and enhancements"
   homepage "https://leopard-gecko.github.io/jrogue/"
   url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5J.043/jrogue043.tar.gz"
   version "5.4.5J.043"
@@ -12,7 +12,7 @@ class Jrogue < Formula
   def install
     args = %W[
       --prefix=#{prefix}
-      --mandir=/usr/local/share/man/ja/man6
+      --mandir=#{share}/man/ja/man6
     ]
     
     args << "--enable-bg2black=no" if build.without? "bg2black"
