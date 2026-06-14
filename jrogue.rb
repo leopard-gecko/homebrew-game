@@ -1,38 +1,39 @@
 class Jrogue < Formula
-  desc "jRogue: Rogue with Japanese support and enhancements"
+  desc "Rogue: Rogue 5.4.5 with Japanese/English runtime switching, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5J.043/jrogue043.tar.gz"
-  version "5.4.5J.043"
-  sha256 "94860183a12070c0466f3093dbb320f61130f3dce6fbd74198e2bc50a3414d1d"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5.jec.050/rogue_545_jec_050.tar.gz"
+  version "5.4.5jec.050"
+  sha256 "d514a714c8860fc30694d44b2325dac348b112b3a7f71efddc80f841971fb0ed"
 
-  option "without-bg2black", "背景色を変更しない"
-  option "without-invcursor", "プレイヤーの位置でカーソルを表示する"
-  option "with-wizardmode", "ウィザードモードあり"
+  option "with-modern-settings", "カラー有効、passgo有効、識別の巻き物1種類、カーソル非表示を初期設定にしてビルドする"
+  option "with-japanese", "日本語を初期言語にしてビルドする"
+  option "with-english", "英語を初期言語にしてビルドする"
+  option "with-wizardmode", "ウィザードモードありでビルドする"
 
   def install
+    odie "--with-japanese and --with-english cannot be used together" if build.with?("japanese") && build.with?("english")
+
     args = %W[
       --prefix=#{prefix}
-      --mandir=#{share}/man/ja/man6
+      --program=jrogue
     ]
-    
-    args << "--enable-bg2black=no" if build.without? "bg2black"
-    args << "--enable-invcursor=no" if build.without? "invcursor"
-    args << "--enable-wizardmode" if build.with? "wizardmode"
-    
+
+    args << "--modern" if build.with?("modern-settings")
+    args << "--wizard" if build.with?("wizardmode")
+
+    if build.with?("japanese")
+      args << "--default-language=ja"
+    elsif build.with?("english")
+      args << "--default-language=en"
+    end
+
     system "./configure", *args
     system "make", "install"
+
+    doc.install "README.txt"
   end
 
   test do
-    # `test do` will create, run in and delete a temporary directory.
-    #
-    # This test will fail and we won't accept that! It's enough to just replace
-    # "false" with the main program this formula installs, but it'd be nice if you
-    # were more thorough. Run the test with `brew test libhoge`. Options passed
-    # to `brew install` such as `--HEAD` also need to be provided to `brew test`.
-    #
-    # The installed folder is not in the path, so use the entire path to any
-    # executables being tested: `system "#{bin}/program", "do", "something"`.
-    system "#{bin}/jrogue"
+    system "#{bin}/jrogue", "-s"
   end
 end
