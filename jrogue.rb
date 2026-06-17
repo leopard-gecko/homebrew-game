@@ -1,4 +1,3 @@
-```ruby
 class JrogueOriginal < Formula
   desc "Rogue 5.4.5 with original-like defaults and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
@@ -20,4 +19,3 @@ class JrogueOriginal < Formula
     system "#{bin}/jrogue-original", "-s"
   end
 end
-```
