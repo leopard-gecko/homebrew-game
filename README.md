@@ -19,6 +19,7 @@ https://leopard-gecko.github.io/jrogue/
 
 ```sh
 brew tap leopard-gecko/game
+brew trust leopard-gecko/game
 brew install jrogue
 ```
 
