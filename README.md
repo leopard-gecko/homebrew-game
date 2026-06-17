@@ -137,7 +137,7 @@ export ROGUEOPTS="nocolor,nopassgo,noidscrl,cursor"
 
 スコアファイルを置く場所を固定したい場合は、jRogueを起動する前に決まったディレクトリへ移動するようにシェル関数を作っておくと便利です。
 
-例：
+書類フォルダに移動する例：
 
 ```sh
 function myjrogue() {
@@ -146,6 +146,12 @@ function myjrogue() {
     popd >/dev/null
 }
 alias jrogue=myjrogue
+```
+
+スコアファイルの置き場所をGUI版と合わせる場合は、`~/Documents/`を以下のように変更します。
+
+```sh
+~/Library/Application\ Support/Rogue/5.4
 ```
 
 ## Tips：くり返し遊ぶための設定例
