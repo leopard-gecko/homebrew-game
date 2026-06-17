@@ -15,7 +15,7 @@ https://leopard-gecko.github.io/jrogue/
 
 ## インストール方法
 
-まずtapを追加し、通常版をインストールします。
+tapを追加してインストールします。
 
 ```sh
 brew tap leopard-gecko/game
