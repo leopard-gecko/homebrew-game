@@ -20,7 +20,11 @@ brew tap leopard-gecko/game
 brew install jrogue --with-modern-settings
 ```
 
-通常の `brew install jrogue` では、歴史的な本来のRogueに近い初期設定でビルドされます。初期状態はカラー無効、`passgo` 無効、識別の巻き物5種類、プレイ中のカーソル表示ありです。
+オプションをつけずに普通にインストールした場合は、歴史的な本来のRogueに近い初期設定でビルドされます。初期状態はカラー無効、`passgo` 無効、識別の巻き物5種類、プレイ中のカーソル表示ありです。
+
+```sh
+brew install jrogue
+```
 
 カラー有効、`passgo` 有効、識別の巻き物1種類、プレイ中のカーソル非表示を初期設定にしたい場合は、次のようにインストールします。普通に遊ぶ場合はこちらがおすすめです。
 
