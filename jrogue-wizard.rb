@@ -9,6 +9,9 @@ class JrogueWizard < Formula
     args = %W[
       --prefix=#{prefix}
       --program=jrogue-wizard
+      --save-file=jrogue.save
+      --score-file=jrogue.scr
+      --lock-file=jrogue.lck
       --modern
       --wizard
     ]

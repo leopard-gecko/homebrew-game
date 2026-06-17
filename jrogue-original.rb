@@ -9,6 +9,9 @@ class JrogueOriginal < Formula
     args = %W[
       --prefix=#{prefix}
       --program=jrogue-original
+      --save-file=jrogue.save
+      --score-file=jrogue.scr
+      --lock-file=jrogue.lck
     ]
 
     system "./configure", *args
