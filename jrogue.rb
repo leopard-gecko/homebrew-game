@@ -9,6 +9,7 @@ class Jrogue < Formula
     args = %W[
       --prefix=#{prefix}
       --program=jrogue
+      --docdir=#{share}/doc/jrogue
       --save-file=jrogue.save
       --score-file=jrogue.scr
       --lock-file=jrogue.lck
