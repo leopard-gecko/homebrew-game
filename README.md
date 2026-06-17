@@ -102,8 +102,6 @@ ROGUE_LANG=ja jrogue
 ROGUE_LANG=en jrogue
 ```
 
-ソースから直接ビルドする場合は、`./configure` で初期設定を指定できます。例えば、実行ファイル名を `jrogue` にして便利設定を有効にする場合は `./configure --program=jrogue --modern`、初期言語を日本語に固定する場合は `./configure --default-language=ja`、英語に固定する場合は `./configure --default-language=en` を使います。Makefileには互換用として `make japanese`、`make english`、`make modern` も残されています。
-
 ## 環境変数 ROGUEOPTS
 
 ゲーム内オプションは、環境変数 `ROGUEOPTS` でも設定できます。
