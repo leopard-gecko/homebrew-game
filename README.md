@@ -80,18 +80,6 @@ jrogue -s
 jrogue -d
 ```
 
-日本語環境で英語表示で起動したい場合は、環境変数 `ROGUE_LANG` を指定します。
-
-```sh
-ROGUE_LANG=en jrogue
-```
-
-英語環境などで日本語表示で起動したい場合は、次のようにします。
-
-```sh
-ROGUE_LANG=ja jrogue
-```
-
 ## 遊び方
 
 詳細は付属のドキュメント、または[【運命の洞窟】への案内書](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E6%A1%88%E5%86%85%E6%9B%B8.md)を参照してください。  
