@@ -138,7 +138,7 @@ export ROGUEOPTS="nocolor,nopassgo,noidscrl,cursor"
 - `idscrl`：識別の巻き物を1種類にまとめます。`noidscrl` を指定するとRogue本来に近い5種類になります。ゲーム開始後は変更できません。
 - `language=ja` / `language=en`：表示する言語を指定します。
 
-詳細は、【運命の洞窟】への案内書の「オプション」の項目を参照してください。
+詳細は、[【運命の洞窟】への案内書](https://github.com/leopard-gecko/homebrew-game/blob/master/%E9%81%8B%E5%91%BD%E3%81%AE%E6%B4%9E%E7%AA%9F%E3%81%B8%E3%81%AE%E6%A1%88%E5%86%85%E6%9B%B8.md)の「オプション」の項目を参照してください。
 
 ## セーブファイルとスコアファイル
 
