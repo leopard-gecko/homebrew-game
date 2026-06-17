@@ -142,7 +142,7 @@ export ROGUEOPTS="nocolor,nopassgo,noidscrl,cursor"
 
 ## セーブファイルとスコアファイル
 
-標準では `jrogue.save`、`jrogue.scr`、`jrogue.lck` を使います。
+標準では `rogue.save`、`rogue.scr`、`rogue.lck` を使います。
 
 スコアファイルを置く場所を固定したい場合は、jRogueを起動する前に決まったディレクトリへ移動するようにシェル関数を作っておくと便利です。
 

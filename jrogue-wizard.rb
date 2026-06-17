@@ -10,9 +10,9 @@ class JrogueWizard < Formula
       --prefix=#{prefix}
       --program=jrogue-wizard
       --docdir=#{share}/doc/jrogue
-      --save-file=jrogue.save
-      --score-file=jrogue.scr
-      --lock-file=jrogue.lck
+      --save-file=rogue.save
+      --score-file=rogue.scr
+      --lock-file=rogue.lck
       --modern
       --wizard
     ]
