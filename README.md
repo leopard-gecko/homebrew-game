@@ -17,7 +17,8 @@ https://leopard-gecko.github.io/jrogue/
 
 ```sh
 brew tap leopard-gecko/game
-brew install jrogue --with-modern-settings
+brew trust leopard-gecko/game
+brew install jrogue
 ```
 
 オプションをつけずに普通にインストールした場合は、歴史的な本来のRogueに近い初期設定でビルドされます。初期状態はカラー無効、`passgo` 無効、識別の巻き物5種類、プレイ中のカーソル表示ありです。
