@@ -1,5 +1,5 @@
-class JrogueOriginal < Formula
-  desc "Rogue 5.4.5 with original-like defaults and macOS fixes"
+class Jrogue < Formula
+  desc "Rogue 5.4.5 with Japanese/English, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
   url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5.jec.050/rogue_545_jec_050.tar.gz"
   version "5.4.5jec.050"
@@ -8,7 +8,8 @@ class JrogueOriginal < Formula
   def install
     args = %W[
       --prefix=#{prefix}
-      --program=jrogue-original
+      --program=jrogue
+      --modern
     ]
 
     system "./configure", *args
@@ -16,6 +17,6 @@ class JrogueOriginal < Formula
   end
 
   test do
-    system "#{bin}/jrogue-original", "-s"
+    system "#{bin}/jrogue", "-s"
   end
 end
