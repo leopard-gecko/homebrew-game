@@ -1,3 +1,4 @@
+```ruby
 class Jrogue < Formula
   desc "Rogue: Rogue 5.4.5 with Japanese/English runtime switching, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
@@ -29,11 +30,10 @@ class Jrogue < Formula
 
     system "./configure", *args
     system "make", "install"
-
-    doc.install "README.txt"
   end
 
   test do
     system "#{bin}/jrogue", "-s"
   end
 end
+```
