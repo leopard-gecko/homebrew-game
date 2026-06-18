@@ -1,4 +1,4 @@
-class JrogueClone3 < Formula
+class JrogueClone < Formula
   desc "Rogue Clone III with Japanese, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
   url "https://github.com/leopard-gecko/homebrew-game/releases/download/vclone-iii.jec.001/rogue_clone_iii_jec_001.tar.gz"
