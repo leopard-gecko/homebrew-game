@@ -3,7 +3,7 @@ class JrogueClone < Formula
   homepage "https://leopard-gecko.github.io/jrogue/"
   url "https://github.com/leopard-gecko/homebrew-game/releases/download/vclone-iii.jec.001/rogue_clone_iii_jec_001.tar.gz"
   version "clone-iii.jec.001"
-  sha256 "57ad9de8a0052c6d3ddfaaad18a207513ec0f92fb9fa13f64a8b4c53155985f0"
+  sha256 "7b14fad2a63b6dd058103f32e05869cfebe847e9adda425a3017854f973db6df"
 
   def install
     args = %W[
