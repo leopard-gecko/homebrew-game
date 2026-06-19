@@ -13,7 +13,6 @@ class JrogueWizard < Formula
       --save-file=rogue.save
       --score-file=rogue.scr
       --lock-file=rogue.lck
-      --modern
       --wizard
     ]
 
