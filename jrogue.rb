@@ -3,7 +3,7 @@ class Jrogue < Formula
   homepage "https://leopard-gecko.github.io/jrogue/"
   url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5.jec.051/rogue_545_jec_051.tar.gz"
   version "5.4.5jec.051"
-  sha256 "cb338429d10337c108f09059068c84dbe73b913209ddfad4ce82936496e78508"
+  sha256 "74bcb15871641a4ceaa505cfba825feb9cb0ca6a36aaa617e5410533ec1d2346"
 
   def install
     args = %W[
@@ -13,7 +13,6 @@ class Jrogue < Formula
       --save-file=rogue.save
       --score-file=rogue.scr
       --lock-file=rogue.lck
-      --modern
     ]
 
     system "./configure", *args
