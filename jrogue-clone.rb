@@ -13,7 +13,6 @@ class JrogueClone < Formula
       --save-file=rogue-clone.save
       --score-file=rogue-clone.scores
       --lock-file=rogue-clone.lock
-      --modern
     ]
 
     system "./configure", *args
