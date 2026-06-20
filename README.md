@@ -13,6 +13,9 @@ Rogueの本流と言うべきバージョンは5.4であり当サイトでもメ
 ここにあるのはターミナルで使うCUI版です。クリック操作のみで起動できるGUI版については、下記のURLを参照してください。5.4とClone IIIの違いについても記載しています。  
 https://leopard-gecko.github.io/jrogue/
 
+ソースコードは一応Linuxにも対応しています。詳しくは下記のURLから。
+https://note.com/leopard_gecko_00/n/nee49f7e7cc3f
+
 ## 必要環境
 
 [Homebrew](http://brew.sh/index_ja.html)
