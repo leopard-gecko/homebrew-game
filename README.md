@@ -13,7 +13,7 @@ Rogueの本流と言うべきバージョンは5.4であり当サイトでもメ
 ここにあるのはターミナルで使うCUI版です。クリック操作のみで起動できるGUI版については、下記のURLを参照してください。5.4とClone IIIの違いについても記載しています。  
 https://leopard-gecko.github.io/jrogue/
 
-ソースコードは一応Linuxにも対応しています。詳しくは下記のURLから。
+ソースコードは一応Linuxにも対応しています。Linuxで使いたい方や、Macでソースコードからビルドしたい方は下記のURLを参照してください。
 https://note.com/leopard_gecko_00/n/nee49f7e7cc3f
 
 ## 必要環境
@@ -130,12 +130,12 @@ Rogue Clone III版については、[Clone III用の案内書](https://github.co
 - `fruit=...`：好きな果物名を指定します。
 - `file=...`：セーブファイル名を指定します。
 
-5.4版で使う主な項目は以下の通りです。
+5.4版のみで使う項目は以下の通りです。
 
-- `idscrl` / `noidscrl`：識別の巻き物を1種類にまとめるか、Rogue本来に近い5種類にするかを指定します。ゲーム開始後は変更できません。
+- `idscrl` / `noidscrl`：識別の巻き物を1種類にまとめるか、Rogue 5.4の元々の設定である5種類にするかを指定します。ゲーム開始後は変更できません。
 - `terse` / `noterse`：メッセージを簡潔にするかどうかを指定します。
 
-Clone III版で使う主な項目は以下の通りです。
+Clone III版のみで使う項目は以下の通りです。
 
 - `skull` / `noskull`、または `tombstone` / `notombstone`：死亡時の墓標表示を指定します。
 - `askquit` / `noaskquit`：終了時に確認するかどうかを指定します。
