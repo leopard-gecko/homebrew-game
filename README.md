@@ -8,7 +8,7 @@ Rogueの本流と言うべきバージョンは5.4であり当サイトでもメ
 
 それぞれ、UTF-8による日本語・英語表示切り替え、日本語や絵文字の入力機能、カラー表示、macOS向けの修正などを加えています。Homebrewの公式リポジトリに英語版Rogueのパッケージがすでに存在しているため、こちらのパッケージは `jrogue`  、`jrogue-clone`という名前にしています。
 
-日本語環境では日本語表示、それ以外では英語表示になりますが、環境変数での指定やゲーム中の言語切り替えも可能です。
+通常はOSの言語設定に応じて日本語または英語で表示されます。環境変数 `ROGUEOPTS` による指定や、ゲーム中のオプション画面での言語切り替えも可能です。
 
 ここにあるのはターミナルで使うCUI版です。クリック操作のみで起動できるGUI版については、下記のURLを参照してください。5.4とClone IIIの違いについても記載しています。  
 https://leopard-gecko.github.io/jrogue/
@@ -30,7 +30,7 @@ brew trust leopard-gecko/game
 brew install jrogue
 ```
 
-5.4版の実行コマンドは `jrogue` です。デフォルトではカラー表示ありで識別の巻き物は１種類になります。本来の歴史的な5.4の設定で遊びたい場合は、後述の環境変数 `ROGUEOPTS`で設定することができます。
+5.4版の実行コマンドは `jrogue` です。デフォルトではカラー表示、通路の角で止まらずに進む設定、識別の巻き物を１種類にまとめる設定が有効で、プレイ中のカーソルは非表示になります。本来の歴史的な5.4の設定で遊びたい場合は、後述の環境変数 `ROGUEOPTS` で設定することができます。
 
 Clone III版をインストールする場合は、最後の行を次のようにします。
 
@@ -38,7 +38,7 @@ Clone III版をインストールする場合は、最後の行を次のよう�
 brew install jrogue-clone
 ```
 
-Clone III版の実行コマンドは `jrogue-clone` になります。デフォルトではカラー表示ありで走る時に曲がり角で止まらない設定になります。本来の歴史的なClone IIIの設定で遊びたい場合は、後述の環境変数 `ROGUEOPTS`で設定することができます。
+Clone III版の実行コマンドは `jrogue-clone` になります。デフォルトではカラー表示と通路の角で止まらずに進む設定が有効で、`jump` は無効、プレイ中のカーソルは非表示になります。本来の歴史的なClone IIIの設定で遊びたい場合は、後述の環境変数 `ROGUEOPTS` で設定することができます。
 
 遊び方やライセンスなどの各種ドキュメントは、Homebrewの通常のドキュメントディレクトリにインストールされます。Apple Silicon環境では、おおむね次の場所になります。
 
@@ -125,10 +125,11 @@ Rogue Clone III版については、[Clone III用の案内書](https://github.co
 - `cursor` / `nocursor`：プレイ中のカーソル表示を有効／無効にします。
 - `passgo` / `nopassgo`：通路の角で止まらずに進むかどうかを指定します。
 - `jump` / `nojump`：走行中の表示を省略するかどうかを指定します。
-- `language=ja` / `language=en`：表示する言語を指定します。
+- `language=auto` / `language=ja` / `language=en`：表示する言語を指定します。`auto` ではOSの言語設定が反映されます。
 - `name=...`：プレイヤー名を指定します。
 - `fruit=...`：好きな果物名を指定します。
 - `file=...`：セーブファイル名を指定します。
+- `tombstone` / `notombstone`：死亡時の画面（5.4版では墓標、Clone III版では骸骨）を表示するかどうかを指定します。
 
 5.4版のみで使う項目は以下の通りです。
 
@@ -137,7 +138,7 @@ Rogue Clone III版については、[Clone III用の案内書](https://github.co
 
 Clone III版のみで使う項目は以下の通りです。
 
-- `skull` / `noskull`、または `tombstone` / `notombstone`：死亡時の墓標表示を指定します。
+- `skull` / `noskull`：死亡時の骸骨表示を指定します。`tombstone` / `notombstone` でも指定できます。
 - `askquit` / `noaskquit`：終了時に確認するかどうかを指定します。
 
 5.4版で、カラー表示、通路の角を止まらずに進む設定、識別の巻き物を1種類にまとめる設定、簡潔なメッセージ表示を有効にし、表示言語を日本語、プレイヤー名を「ブルー・ミーニー」、好きな果物を「🍏 」にしたい場合は、`.zshrc` に以下のように追記します。
@@ -172,24 +173,26 @@ export ROGUEOPTS="nocolor,nopassgo,jump,cursor"
 
 ## 表示する言語
 
-表示する言語は、以下の順で決まります。
+デフォルトではシステムで設定されている言語で表示されますが、以下のように設定を切り替えることも可能です。
 
-1. `ROGUE_LANG` が `ja` または `en` の場合は、それを優先します。
-2. `ROGUE_LANG` が指定されていない場合は、`LC_ALL`、`LC_MESSAGES`、`LANG` の順にロケールを調べます。日本語ロケールでは日本語、それ以外では英語になります。
-3. ゲーム中のオプション画面で `language` を変更すると、以後のメッセージや表示名が選択した言語で再生成されます。
+1. 環境変数 `ROGUEOPTS` に `language=ja` または `language=en` が指定されていれば、その言語を使用します。
+2. 指定がない場合はビルド時の既定値に従います。通常のビルドでは `auto` が既定となり、OSの言語設定を反映します。`language=auto` を指定した場合も同様です。
+3. ゲーム中は `o` コマンドでオプション画面を開き、`language` の項目で `j`（日本語）または `e`（英語）を入力すると、表示言語を切り替えられます。
 
-例：
+環境変数で指定する例：
 
 ```sh
-ROGUE_LANG=ja jrogue
-ROGUE_LANG=en jrogue
+ROGUEOPTS="language=ja" jrogue
+ROGUEOPTS="language=en" jrogue
 ```
+
+Clone III版でも同様に、`jrogue-clone` に対して指定できます。
 
 ## セーブファイル、スコアファイル、ロックファイル
 
 5.4では `rogue.save`、`rogue.scr`、`rogue.lck` がカレントディレクトリに保存されます。
 
-Rogue Clone IIIでは `rogue-clone.save`、`rogue-clone.scores`、`rogue-clone.lock` です。。
+Rogue Clone IIIでは `rogue-clone.save`、`rogue-clone.scores`、`rogue-clone.lock` です。
 
 スコアファイルを置く場所を固定したい場合は、Rogueを起動する前に決まったディレクトリへ移動するようにシェル関数を作っておくと便利です。
 
@@ -248,4 +251,4 @@ read -r -n 1 input
 
 ## 動作確認
 
-macOS Tahoe 26.5
+macOS Golden Gate 27.0.1
