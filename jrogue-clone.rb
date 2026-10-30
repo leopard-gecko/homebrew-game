@@ -1,9 +1,9 @@
 class JrogueClone < Formula
   desc "Rogue Clone III with Japanese, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/vclone-iii.jec.003/rogue_clone_iii_jec_003.tar.gz"
-  version "clone-iii.jec.003"
-  sha256 "c2059e21c15314ce83e8847b8775c34f575499542ab0bcbbd5636e7e1918a400"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/vclone-iii.jec.004/rogue_clone_iii_jec_004.tar.gz"
+  version "clone-iii.jec.004"
+  sha256 "56ecbc9f7ae89a3946702cdfd829c2a0b2321179c39b6c4b8ae5da15ac63833b"
 
   def install
     args = %W[
