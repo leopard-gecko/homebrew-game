@@ -1,9 +1,9 @@
 class JrogueWizard < Formula
   desc "Rogue 5.4.5 with wizard mode, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5.jec.055/rogue_545_jec_055.tar.gz"
-  version "5.4.5jec.055"
-  sha256 "8904b06320f790f38a1a9c3104cf4fbe523222667e63b7de0e7eb7d3be376676"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/v5.4.5.jec.056/rogue-5.4.5jec.056-src.tar.gz"
+  version "5.4.5jec.056"
+  sha256 "98541527feec8903abd4c7af2f73b2b672a276370117cc3c344697612e5a9f27"
 
   def install
     args = %W[
