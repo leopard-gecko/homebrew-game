@@ -193,7 +193,7 @@ Clone III版でも同様に、`jrogue-clone` に対して指定できます。
 
 ## セーブファイル、スコアファイル、ロックファイル
 
-5.4では `rogue.save`、`rogue.scr`、`rogue.lck` がカレントディレクトリに保存されます。
+5.4では `rogue.save`、`rogue.scr` がカレントディレクトリに保存されます。
 
 Rogue Clone IIIでは `rogue-clone.save`、`rogue-clone.scores`、`rogue-clone.lock` です。
 
