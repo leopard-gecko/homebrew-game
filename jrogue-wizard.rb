@@ -12,7 +12,6 @@ class JrogueWizard < Formula
       --docdir=#{share}/doc/jrogue
       --save-file=rogue.save
       --score-file=rogue.scr
-      --lock-file=rogue.lck
       --wizard
     ]
 
