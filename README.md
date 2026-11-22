@@ -12,7 +12,9 @@ Rogueの本流と言うべきバージョンは5.4であり当サイトでもメ
 
 通常はOSの言語設定に応じて日本語または英語で表示されます。環境変数 `ROGUEOPTS` による指定や、ゲーム中のオプション画面での言語切り替えも可能です。
 
-ここにあるのはターミナルで使うCUI版です。クリック操作のみで起動できるGUI版については、下記のURLを参照してください。各バージョンの違いについても記載しています。  
+ここでは各バージョンのRogueを個別に起動できるほか、5種類をメニューから選択できるCUIランチャー「Rogue for macOS」（`rogue-mac`）も用意しています。ランチャーでは、セーブからの再開やゲーム終了後の再プレイもできます。
+
+クリック操作で利用できるGUI版「Rogue for macOS」も公開しています。GUI版とCUIランチャーではセーブファイルやスコアファイルの保存先を共通にしており、どちらからでも同じ冒険を続けられます。各バージョンの違いについても、以下のサイトで紹介しています。  
 https://leopard-gecko.github.io/jrogue/
 
 ソースコードはLinuxにも対応しています。Linuxで使いたい方や、Macでソースコードからビルドしたい方は下記のURLも参照してください。  
@@ -31,7 +33,15 @@ brew tap leopard-gecko/game
 brew trust leopard-gecko/game
 ```
 
-各バージョンは以下のコマンドでインストールできます。
+5種類のRogueをまとめてインストールし、メニューから選んで遊ぶ場合は、CUIランチャー `rogue-mac` をインストールします。
+
+```sh
+brew install rogue-mac
+```
+
+ランチャーのインストール時に、Rogue 5.4.5、Clone III、DOS Tribute、3.6、5.2も依存関係として自動的にインストールされます。起動コマンドは `rogue-mac` です。
+
+ランチャーを使用せず、各バージョンを個別にインストールすることもできます。
 
 | バージョン | インストールコマンド |
 | --- | --- |
@@ -41,7 +51,7 @@ brew trust leopard-gecko/game
 | Rogue 3.6 | `brew install rogue36` |
 | Rogue 5.2 | `brew install rogue52` |
 
-5種類をまとめてインストールする場合は次のようにします。
+ランチャーを使用せずに5種類をまとめてインストールする場合は、次のようにします。
 
 ```sh
 brew install rogue54 rogue-c3 rogue-dos rogue36 rogue52
@@ -61,6 +71,7 @@ DOS Tribute、3.6、5.2の初期設定については、それぞれのリポジ
 
 ```text
 /opt/homebrew/share/doc/
+├── rogue-mac/
 ├── rogue54/
 ├── rogue-c3/
 ├── rogue-dos/
@@ -70,11 +81,44 @@ DOS Tribute、3.6、5.2の初期設定については、それぞれのリポジ
 
 Intel環境では、Homebrewのインストール先に応じて `/usr/local/share/doc/` 以下になります。
 
-各バージョンのREADME、【運命の洞窟】への案内書、ライセンスなどが収録されます。案内書がHTML、TXT、Markdownのどの形式で付属するかは、バージョンによって異なります。5.4、DOS Tributeなどのmanページも、それぞれの実行ファイル名でインストールされます。
+ランチャーには日本語・英語のREADMEが付属します。各ゲームにはREADME、【運命の洞窟】への案内書、ライセンスなどが収録されます。案内書がHTML、TXT、Markdownのどの形式で付属するかは、バージョンによって異なります。5.4、DOS Tributeなどのmanページも、それぞれの実行ファイル名でインストールされます。
 
 ## 起動方法
 
-インストール後は、次のコマンドで各バージョンを起動します。
+### CUIランチャー（rogue-mac）
+
+`rogue-mac` は、ターミナルからRogueのバージョンを選択して起動するランチャーです。AppleScriptによるGUI版「Rogue for macOS」と同じ保存先を使用します。
+
+```sh
+rogue-mac
+```
+
+メニューでは `1` から `5` でバージョンを選択し、`Q` で終了します。バージョンを選ぶと、既定のセーブファイルがない場合は新しいゲームを開始し、セーブファイルがある場合は次の操作を選べます。
+
+| キー | 動作 |
+| --- | --- |
+| `R` またはReturn | セーブから再開 |
+| `N` | 新しい冒険を始める（既存のセーブは削除しない） |
+| `F` | 別のセーブファイルをパスで指定 |
+| `Q` | バージョン選択に戻る |
+
+ゲーム終了後は、`Y` で同じバージョンをもう一度起動、`M` でバージョン選択に戻る、`N` でランチャーを終了します。`Y` を選んだ場合はセーブファイルの有無を再確認します。各選択肢はReturnで確定します。
+
+バージョンを引数で直接指定することもできます。
+
+```sh
+rogue-mac 54
+rogue-mac clone
+rogue-mac dos
+rogue-mac 36
+rogue-mac 52
+```
+
+ランチャーの操作方法について詳しくは、付属の日本語・英語READMEを参照してください。
+
+### 各バージョンを直接起動する場合
+
+各バージョンをランチャーを使わずに直接起動する場合は、次のコマンドを使用します。
 
 | バージョン | 起動コマンド |
 | --- | --- |
@@ -197,9 +241,21 @@ ROGUEOPTS="nocolor,nopassgo,jump,cursor" rogue-c3
 | Rogue 3.6 | `rogue36.save` | `rogue36.scr` | `rogue36.lock` |
 | Rogue 5.2 | `rogue52.save` | `rogue52.scr` | 専用ファイルなし |
 
-原則としてゲーム起動時の作業ディレクトリに保存されます。5.4とClone IIIは、実行コマンド名を変更しても、既存のセーブ・スコアファイル名を維持しています。
+各ゲームを `rogue54` などのコマンドで直接起動した場合は、原則として起動時の作業ディレクトリに保存されます。5.4とClone IIIは、実行コマンド名を変更しても、既存のセーブ・スコアファイル名を維持しています。
 
-スコアファイルを置く場所を固定したい場合は、Rogueを起動する前に決まったディレクトリへ移動するようにシェル関数を作っておくと便利です。
+一方、CUIランチャー `rogue-mac` から起動した場合は、GUI版「Rogue for macOS」と同じ保存先を使用します。以下のフォルダはすべて `~/Library/Application Support/Rogue/` 以下です。
+
+| バージョン | GUI版・CUIランチャー共通の保存先 |
+| --- | --- |
+| Rogue 5.4.5 | `5.4/` |
+| Rogue Clone III | `Clone III/` |
+| Rogue DOS Tribute | `DOS 1.48/` |
+| Rogue 3.6 | `3.6/` |
+| Rogue 5.2 | `5.2/` |
+
+GUI版とCUIランチャーは同じセーブ・スコアファイルを使用します。同じバージョンを両方から同時に起動して、同じセーブファイルを操作しないでください。なお、`ROGUEOPTS` の `file=...` などで標準のセーブファイル名を変更した場合は、ランチャーがそのファイルを自動検出できないことがあります。
+
+直接起動する場合にスコアファイルの場所を固定したいときは、起動前に決まったディレクトリへ移動するシェル関数を作っておくと便利です。
 
 5.4版で書類フォルダに移動する例：
 
@@ -212,57 +268,12 @@ function myrogue54() {
 alias rogue54=myrogue54
 ```
 
-スコアファイルの置き場所をGUI版と合わせる場合は、`~/Documents/` を以下のように変更します。
-
-5.4の場合：
-
-```sh
-~/Library/Application\ Support/Rogue/5.4
-```
-
-Clone IIIの場合：
-
-```sh
-~/Library/Application\ Support/Rogue/Clone\ III
-```
-
 ## ウィザードモード
 
 5.4のウィザードモードを有効にしてインストールしたい場合は以下のようにします。これは一般向けではなく基本的にデバッグ用ですので、普通に遊ぶ分には必要ありません。
 
 ```sh
 brew install rogue54-wizard
-```
-
-## Tips：くり返し遊ぶための設定例
-
-以下のように `.zshrc` に記述すると、5.4版については書類フォルダに移動し、日本語表示、カラー表示、カーソル無効、識別の巻き物が１種類、簡潔表示、通路を止まらずに進む設定で起動し、ゲーム終了後にもう一度遊ぶかを尋ねるようになります。
-
-```sh
-function myrogue54() {
-    pushd ~/Documents/ >/dev/null
-    while true; do
-        ROGUEOPTS="passgo,color,nocursor,idscrl,terse,language=ja" rogue54 "$@"
-        echo "もう一度遊びますか？ (y または n)"
-        read -r -k 1 input
-        echo
-        if [ "$input" = "y" ]; then
-            set --
-            continue
-        else
-            echo "それでは、またね。"
-            break
-        fi
-    done
-    popd >/dev/null
-}
-alias rogue54=myrogue54
-```
-
-bashの場合は、キー入力部分を次のようにします。
-
-```sh
-read -r -n 1 input
 ```
 
 ## 動作確認
