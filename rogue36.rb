@@ -1,9 +1,9 @@
 class Rogue36 < Formula
   desc "Rogue 3.6 with Japanese/English and modern terminal support"
   homepage "https://github.com/leopard-gecko/rogue_3.6_jec"
-  url "https://github.com/leopard-gecko/rogue_3.6_jec/releases/download/v004/rogue_3.6_jec-004.tar.gz"
-  version "3.6.004"
-  sha256 "b2107f2711784e6d17a39a8a0de53bcb475868f28474113cdc6a82e66a132b65"
+  url "https://github.com/leopard-gecko/rogue_3.6_jec/releases/download/v005/rogue_3.6_jec-005.tar.gz"
+  version "3.6.005"
+  sha256 "e843adbb115f10d42f2e0cbf4cadfb177f0aa06e19e5419111aaff3300d196a1"
 
   def install
     system "./configure", "--prefix=#{prefix}", "--program=rogue36"
