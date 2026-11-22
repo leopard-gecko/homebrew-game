@@ -1,9 +1,9 @@
 class RogueMac < Formula
   desc "Terminal launcher for five Rogue games with shared GUI preferences"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/vrogue-mac.003/rogue-mac-003.tar.gz"
-  version "0.3.0"
-  sha256 "ab0a7be3c091043cc3aa32b02260204863f72d276dbf1590c0290615de8d7ea5"
+  url "https://github.com/leopard-gecko/homebrew-game/releases/download/vrogue-mac.004/rogue-mac-004.tar.gz"
+  version "0.3.1"
+  sha256 "64a10cf0a8f59046210b0bd4cc09e5dc8a97a27590ed17780eb7afcf979f04ae"
 
   depends_on :macos
   depends_on "leopard-gecko/game/rogue54"
@@ -19,6 +19,6 @@ class RogueMac < Formula
 
   test do
     assert_match "Rogue for macOS", shell_output("#{bin}/rogue-mac --help")
-    assert_match "rogue-mac 0.3.0", shell_output("#{bin}/rogue-mac --version")
+    assert_match "rogue-mac 0.3.1", shell_output("#{bin}/rogue-mac --version")
   end
 end

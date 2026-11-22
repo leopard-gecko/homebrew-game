@@ -20,7 +20,7 @@ rogue-mac --help
 
 The menu uses an elegant black-background design with gold accents, adapted from the supplied reference script. It shows the player greeting, favorite fruit, and “Saved” markers. It does not display binary filenames. `NO_COLOR` and `--mono` disable menu colors without changing the Terminal profile.
 
-Press **Return on the version menu** to select the version last selected in either launcher. This is stored under `Savedmygameversion`. Because the GUI also saves the selection when its version control changes, this is *the last selected version*, not necessarily the last game actually started. Unknown or unsupported versions default to 5.4. Choose `P` for player settings, `S` for game settings, or `Q` to quit.
+Press **Return on the version menu** to select the version last selected in either launcher. This is stored under `Savedmygameversion`. Because the GUI also saves the selection when its version control changes, this is *the last selected version*, not necessarily the last game actually started. Unknown or unsupported versions default to 5.4. The last selected version name is highlighted in teal instead of showing a separate "Last" marker. The Return hint includes the actual version name. The input prompt reads "Choose a version or settings". Choose `P` for player settings, `S` for game settings, or `Q` to quit. On normal exit, the launcher shows the same farewell message as AppleScript: "See you again." (Japanese: 「それでは、またね。」).
 
 ## Saved games and replay
 
