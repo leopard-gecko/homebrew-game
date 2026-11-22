@@ -3,7 +3,7 @@ class RogueDos < Formula
   homepage "https://github.com/leopard-gecko/rogue_dos_tribute"
   url "https://github.com/leopard-gecko/rogue_dos_tribute/releases/download/v091/rogue_dos_tribute-091.tar.gz"
   version "dos-1.4.8.jec.091"
-  sha256 "e2bc45d02e9e9f5a146b7813d7cab804ef8ce45438e90a0f8c211cc570ec5101"
+  sha256 "17a34d7807f316919ec6e45b9c94ad67c94918dcdbfa769d65061b915a391c0d"
 
   def install
     args = %W[
