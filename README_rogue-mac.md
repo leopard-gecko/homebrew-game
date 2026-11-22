@@ -13,14 +13,25 @@ rogue-mac clone     # Rogue Clone III
 rogue-mac dos       # Rogue DOS Tribute
 rogue-mac 36        # Rogue 3.6
 rogue-mac 52        # Rogue 5.2
-rogue-mac --mono    # menus without ANSI colors
 rogue-mac 54 -s     # pass arguments directly to the game
 rogue-mac --help
 ```
 
-The menu uses an elegant black-background design with gold accents, adapted from the supplied reference script. It shows the player greeting, favorite fruit, and “Saved” markers. It does not display binary filenames. `NO_COLOR` and `--mono` disable menu colors without changing the Terminal profile.
+At startup, the launcher displays a personalized greeting, the favorite fruit, and the five available versions. Versions with a standard save file are marked as saved.
 
-Press **Return on the version menu** to select the version last selected in either launcher. This is stored under `Savedmygameversion`. Because the GUI also saves the selection when its version control changes, this is *the last selected version*, not necessarily the last game actually started. Unknown or unsupported versions default to 5.4. The last selected version name is highlighted in teal instead of showing a separate "Last" marker. The Return hint includes the actual version name. The input prompt reads "Choose a version or settings". Choose `P` for player settings, `S` for game settings, or `Q` to quit. On normal exit, the launcher shows the same farewell message as AppleScript: "See you again." (Japanese: 「それでは、またね。」).
+Use the following keys on the main menu, confirming each entry with Return:
+
+| Key | Action |
+| --- | --- |
+| `1`–`5` | Select a Rogue version |
+| Return alone | Select the last chosen version |
+| `P` | Player name and favorite fruit settings |
+| `S` | Per-version game settings |
+| `Q` | Quit the launcher |
+
+The menu prompt reads “Choose a version or settings.” The Return hint includes the selected version name, such as “Return: launch previously selected Rogue 3.6.” The selection is shared with the AppleScript GUI through `Savedmygameversion`. Since the GUI also records a version when it is selected in its interface, this is the **last selected version**, not necessarily the last game actually started. An unsupported saved value falls back to 5.4.
+
+On normal exit, the launcher displays the AppleScript farewell message: “See you again.” (Japanese: 「それでは、またね。」).
 
 ## Saved games and replay
 
