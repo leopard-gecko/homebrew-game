@@ -63,6 +63,8 @@ Clone III版の実行コマンドは `rogue-c3` です。デフォルトでは�
 
 DOS Tribute、3.6、5.2の初期設定については、それぞれのリポジトリのREADMEや案内書をご覧ください。各Formulaは、それぞれのソースコードリポジトリで公開されたReleaseから取得してビルドします。
 
+以前の `jrogue`、`jrogue-clone`、`jrogue-wizard` は、それぞれ `rogue54`、`rogue-c3`、`rogue54-wizard` に名称を変更しました。旧Formulaをインストール済みの場合は、`brew update` の後、必要に応じて `brew migrate jrogue` などで移行してください。実行ファイル名も変わるため、移行後は再インストールをおすすめします。
+
 ## 起動方法
 
 ### ターミナル用ランチャー（rogue-mac）
@@ -147,19 +149,6 @@ rogue54 -d
 ```
 
 DOS Tribute、3.6、5.2でのセーブ再開やコマンドラインオプションについては、各バージョンのREADMEを参照してください。
-
-## アップデート方法
-
-HomebrewでインストールしたRogueやランチャーは、通常は次のコマンドで更新できます。
-
-```sh
-brew update
-brew upgrade
-```
-
-ランチャーだけを更新する場合は、`brew upgrade rogue-mac` を使用します。なお、`brew upgrade` は、既にインストール済みのバージョンとFormula上のバージョン番号が同じ場合、通常は再インストールを行いません。同一バージョンの配布アーカイブが差し替えられた場合などは、更新済みFormulaを取得したうえで再取得・再インストールが必要になることがあります。
-
-以前の `jrogue`、`jrogue-clone`、`jrogue-wizard` は、それぞれ `rogue54`、`rogue-c3`、`rogue54-wizard` に名称を変更しました。旧Formulaをインストール済みの場合は、`brew update` の後、必要に応じて `brew migrate jrogue` などで移行してください。実行ファイル名も変わるため、移行後は再インストールをおすすめします。
 
 ## ドキュメント
 
