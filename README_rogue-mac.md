@@ -27,11 +27,20 @@ Use the following keys on the main menu, confirming each entry with Return:
 | Return alone | Select the last chosen version |
 | `P` | Player name and favorite fruit settings |
 | `S` | Per-version game settings |
+| `G` | Open a version-specific online guide |
 | `Q` | Quit the launcher |
 
-The menu prompt reads “Choose a version or settings.” The Return hint includes the selected version name, such as “Return: launch previously selected Rogue 3.6.” The selection is shared with the AppleScript GUI through `Savedmygameversion`. Since the GUI also records a version when it is selected in its interface, this is the **last selected version**, not necessarily the last game actually started. An unsupported saved value falls back to 5.4.
+The menu prompt reads “Choose a version or action.” The Return hint includes the selected version name, such as “Return: launch previously selected Rogue 3.6.” The selection is shared with the AppleScript GUI through `Savedmygameversion`. Since the GUI also records a version when it is selected in its interface, this is the **last selected version**, not necessarily the last game actually started. An unsupported saved value falls back to 5.4.
 
 On normal exit, the launcher displays the AppleScript farewell message: “See you again.” (Japanese: 「それでは、またね。」).
+
+## Online guidebooks
+
+Press `G` from the main menu to open **A Guide to the Dungeons of Doom** selection screen. Choose `1`–`5` to open that version's online guide in the macOS default browser; the launcher then returns to its main menu.
+
+Press Return alone to open the guide for the **last selected version**. Press `B` to go back without opening a guide.
+
+Viewing a guide does **not** update the GUI-shared last selected version or any gameplay settings. An internet connection is required to view the online guides.
 
 ## Saved games and replay
 
