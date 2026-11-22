@@ -26,8 +26,8 @@ Use the following keys on the main menu, confirming each entry with Return:
 | `1`–`5` | Select a Rogue version |
 | Return alone | Select the last chosen version |
 | `P` | Player name and favorite fruit settings |
-| `S` | Per-version game settings |
 | `G` | Open a version-specific online guide |
+| `S` | Per-version game settings |
 | `Q` | Quit the launcher |
 
 The menu prompt reads “Choose a version or action.” The Return hint includes the selected version name, such as “Return: launch previously selected Rogue 3.6.” The selection is shared with the AppleScript GUI through `Savedmygameversion`. Since the GUI also records a version when it is selected in its interface, this is the **last selected version**, not necessarily the last game actually started. An unsupported saved value falls back to 5.4.
