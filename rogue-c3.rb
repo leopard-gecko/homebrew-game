@@ -1,15 +1,15 @@
-class JrogueClone < Formula
+class RogueC3 < Formula
   desc "Rogue Clone III with Japanese, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/homebrew-game/releases/download/vclone-iii.jec.004/rogue-clone-iii-004-src.tar.gz"
+  url "https://github.com/leopard-gecko/rogue_clone_iii_jec/releases/download/v004/rogue_clone_iii_jec-004.tar.gz"
   version "clone-iii.jec.004"
-  sha256 "0fab505a586366c99e014a9d8adffbb71453db8ac7facfbbbe1e61007527e8d9"
+  sha256 "4b4889344c691192468917641c2d8775243c8a34e98aae2913fcd5f26951dec0"
 
   def install
     args = %W[
       --prefix=#{prefix}
-      --program=jrogue-clone
-      --docdir=#{share}/doc/jrogue-clone
+      --program=rogue-c3
+      --docdir=#{share}/doc/rogue-c3
       --save-file=rogue-clone.save
       --score-file=rogue-clone.scores
       --lock-file=rogue-clone.lock
@@ -20,6 +20,6 @@ class JrogueClone < Formula
   end
 
   test do
-    system "#{bin}/jrogue-clone", "-s"
+    system "#{bin}/rogue-c3", "-s"
   end
 end
