@@ -1,9 +1,9 @@
 class RogueDos < Formula
   desc "DOS Rogue 1.48 tribute with Japanese/English and color support"
   homepage "https://github.com/leopard-gecko/rogue_dos_tribute"
-  url "https://github.com/leopard-gecko/rogue_dos_tribute/releases/download/v091/rogue_dos_tribute-091.tar.gz"
-  version "dos-1.4.8.jec.091"
-  sha256 "17a34d7807f316919ec6e45b9c94ad67c94918dcdbfa769d65061b915a391c0d"
+  url "https://github.com/leopard-gecko/rogue_dos_tribute/releases/download/v092/rogue_dos_tribute_jec092-src.tar.gz"
+  version "dos-1.4.8.jec.092"
+  sha256 "21b9441b06d7e87b1c979b268f557c0436a253287f507da6fc06372f594e87e6"
 
   def install
     args = %W[

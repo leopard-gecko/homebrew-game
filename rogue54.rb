@@ -1,9 +1,9 @@
 class Rogue54 < Formula
   desc "Rogue 5.4.5 with Japanese/English, color, and macOS fixes"
   homepage "https://leopard-gecko.github.io/jrogue/"
-  url "https://github.com/leopard-gecko/rogue_5.4.5_jec/releases/download/v056/rogue_5.4.5_jec-056.tar.gz"
-  version "5.4.5jec.056"
-  sha256 "eb6b94eaddc41082b96672107b0eedc5702b6de64b7d7674fe2dea7db8541605"
+  url "https://github.com/leopard-gecko/rogue_5.4.5_jec/releases/download/v57/rogue-5.4.5jec.057-src.tar.gz"
+  version "5.4.5jec.057"
+  sha256 "d258f38c976f8a72a0323c1e9369d72df8e267a6087d11ce50a8b6fc45667c91"
 
   def install
     args = %W[
