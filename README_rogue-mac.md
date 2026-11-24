@@ -1,6 +1,6 @@
 # Rogue for macOS (rogue-mac)
 
-A terminal launcher for Rogue 5.4, Clone III, DOS Tribute, 3.6, and 5.2. It shares player information, game settings, and save/score files with the **Rogue for macOS** GUI.
+The **CUI edition of Rogue for macOS** is a terminal launcher for different Rogue versions and derivatives: 5.4, Clone III, DOS Tribute, 3.6, and 5.2. It shares player information, game settings, and save/score files with the [Rogue for macOS GUI edition](https://leopard-gecko.github.io/jrogue/).
 
 ## Starting the launcher
 
@@ -46,7 +46,7 @@ If no save exists, a new adventure starts.
 
 After a game, press `Y` to play the same version again, `M` for the main menu, or `N` to quit.
 
-## Player information (shared with the GUI)
+## Player information (shared with the [GUI](https://leopard-gecko.github.io/jrogue/))
 
 Select `P` on the main menu.
 
@@ -60,7 +60,7 @@ Select `P` on the main menu.
 
 Japanese text and common emoji are supported. Press Return on an empty input to cancel. Commas and newlines cannot be used in names or fruit values.
 
-## Game settings (shared with the GUI)
+## Game settings (shared with the [GUI](https://leopard-gecko.github.io/jrogue/))
 
 Select `S` on the main menu. **Modern** and **Classic** apply ready-made settings, while **Custom** lets you change individual options. Available settings vary by Rogue version.
 
@@ -83,7 +83,7 @@ Use the following keys in Game settings:
 | `V` | Choose which version to configure |
 | `B` | Return to the main menu |
 
-Editing an individual setting switches the mode to **Custom**. Changes made in the GUI are reflected here too.
+Editing an individual setting switches the mode to **Custom**. Changes made in the [GUI](https://leopard-gecko.github.io/jrogue/) are reflected here too.
 
 ## All options
 
@@ -101,17 +101,25 @@ Most options are switched **On / Off**. You can also change the default save fil
 
 Press `R` to **reset all separately saved additional options for that version**. Your player information and regular game settings are not changed.
 
-## External settings
+## Importing the ROGUEOPTS environment variable
 
-`ROGUEOPTS` lets you set Rogue's display and gameplay options before starting a game. Normally, you can simply use the launcher's settings menu instead.
+`ROGUEOPTS` is an environment variable for choosing Rogue's display and gameplay settings before starting a game. For example, `language=ja` selects Japanese and `color` enables color. Separate multiple options with commas (supported options vary by version).
 
-If you have set `ROGUEOPTS` in your Mac shell, the launcher also reads it. Choices made in the launcher take priority; when resuming a saved game, the saved settings take priority.
+The CUI launcher **reads `ROGUEOPTS` from your Mac login shell** and applies it when launching a game. Settings explicitly changed in the launcher take priority. When resuming a saved game, the saved game's settings take priority.
 
-To check which settings the launcher reads, run:
+If you use macOS's default zsh shell, add this line to `~/.zshrc` to apply the settings when starting Rogue. You can also use `~/.zprofile`.
+
+```sh
+export ROGUEOPTS="language=ja,color"
+```
+
+Open a new Terminal window, then check the value imported by the launcher:
 
 ```sh
 rogue-mac --show-rogueopts
 ```
+
+You can normally change settings with `S` in the launcher menu, so setting `ROGUEOPTS` yourself is optional.
 
 ## Shared save directories
 
@@ -127,4 +135,4 @@ Save files are kept under `~/Library/Application Support/Rogue/`.
 
 Use `F` when resuming to choose a different saved game. To change the default save filename, use **All options**.
 
-Do not use the same saved game from both the GUI and the terminal at the same time.
+Do not use the same saved game from both the [GUI](https://leopard-gecko.github.io/jrogue/) and the terminal at the same time.
