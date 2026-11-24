@@ -12,7 +12,6 @@ class RogueC3 < Formula
       --docdir=#{share}/doc/rogue-c3
       --save-file=rogue-clone.save
       --score-file=rogue-clone.scores
-      --lock-file=rogue-clone.lock
     ]
 
     system "./configure", *args
