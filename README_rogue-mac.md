@@ -85,13 +85,13 @@ Choose `S` on the main menu. Each version has its own mode, display language, an
 | 3.6 | Message length, jump, unidentified-item confirmation (`askme`) |
 | 5.2 | Color, corner movement, message length, unidentified-item confirmation (`askme`) |
 
-The `jump` and `askme` values are stored as `True`/`False` for GUI compatibility. They appear as 有効/無効 in Japanese menus and `True`/`False` in English menus.
+GUI-shared ordinary `jump` and `askme` values are stored as `True`/`False` for compatibility. They appear as 有効/無効 in Japanese menus and `True`/`False` in English menus. The 5.2 `jump` entry under **All options** is an additional CUI selection stored as `on` / `off`, independent of the GUI-shared ordinary key.
 
 Select numbered items to edit. `M` chooses **Modern**, **Classic**, or **Custom** modes; `L` toggles Japanese/English; `A` opens the all-options menu; `V` changes the version whose options are edited; and `B` returns to the main menu. Editing an individual option switches that version to **Custom**, matching the GUI. Choosing Modern or Classic applies the GUI's preset for that version.
 
 Settings use the GUI's `SavedVersion54_*`, `SavedVersionCloneIII_*`, `SavedVersionDOS148_*`, `SavedVersion36_*`, and `SavedVersion52_*` keys. In 3.6 and 5.2, `askme` or `noaskme` is calculated from the current mode and settings when launching: Modern enables it, Classic disables it, and Custom uses the individually saved value. This matches the updated AppleScript.
 
-DOS Tribute emits `nodoskeys` for **Rogue 5.4-style** controls and uses the game's default `doskeys` for **DOS 1.48-style** controls; its `macro=` option is also shared. Version 5.2 normally receives `nojump`, as in the GUI, but an explicitly enabled Jump value under Custom mode sends `jump`.
+DOS Tribute emits `nodoskeys` for **Rogue 5.4-style** controls and uses the game's default `doskeys` for **DOS 1.48-style** controls; its `macro=` option is also shared. In 5.2, the current AppleScript GUI does not set `jump`/`nojump`. The CUI **All options** menu offers **On / Off** choices for `jump`, just like other additional boolean options. A saved explicit choice emits `jump` / `nojump` and overrides login-shell settings. Without a saved choice, an external `jump` / `nojump` is preserved; if none exists, the game default applies. No separate “Auto” choice is shown; **R** (Reset individual options) restores inheritance. The GUI's `SavedVersion52_myjump` preference is not used at launch, while the CUI's explicit choice is stored in `SavedVersion52_rogueopt_jump` in the same preference domain.
 
 For **new adventures**, the launcher generates `ROGUEOPTS` from the shared GUI settings, overriding overlapping options read from the login shell and passing through unrelated entries. When **resuming a saved game**, it normally supplies only `language=ja/en` to preserve saved options. Explicit game arguments are passed through unchanged; the environment uses the freshly retrieved login-shell `ROGUEOPTS`, not a stale inherited value.
 

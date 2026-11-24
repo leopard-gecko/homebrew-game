@@ -56,7 +56,7 @@ if [ -f "$LAUNCHER" ] && [ -x "$LAUNCHER" ]; then
     pass "Launcher is executable: $LAUNCHER"
     version=$({ "$LAUNCHER" --version; } 2>/dev/null) || version=''
     case "$version" in
-        'rogue-mac 0.3.24') pass 'Launcher version: 0.3.24' ;;
+        'rogue-mac 0.3.25') pass 'Launcher version: 0.3.25' ;;
         'rogue-mac '*) warn "Launcher version differs from package: $version" ;;
         *) fail 'Cannot retrieve launcher version' ;;
     esac

@@ -1,6 +1,6 @@
-# 第5-A段階 — macOS / Homebrew / GUI共有設定の実機確認
+# 第5-A／第5-B段階 — macOS / Homebrew / GUI共有設定の実機確認
 
-このファイルは `rogue-mac` 0.3.24（配布番号027）の**Mac実機で行うための確認手順**です。ここでの静的テストはLinux上で行っています。macOS実機で動作確認済みという意味ではありません。
+このファイルは `rogue-mac` 0.3.25として第5-B修正を加えたソースの**Mac実機で行うための確認手順**です。ここでの静的テストはLinux上で行っています。macOS実機で動作確認済みという意味ではありません。
 
 ## 1. 公開前にできる確認
 
@@ -14,30 +14,32 @@ sh ./macos-check.sh --launcher ./rogue-mac
 - スクリプトは**共有設定を書き換えず**、ゲームを起動せず、既存セーブを削除・変更しません。
 - プレイヤー名、果物名、ROGUEOPTSの内容を表示しません。`PASS` は検査した項目、`WARN` は不足・未設定・確認不能、`FAIL` は検査失敗です。
 - 共有設定のキーが未設定でも異常とは限りません。GUI/CUIでその項目を保存したことがない場合は正常です。
-- `--launcher` を省略すると、PATHで見つかった `rogue-mac` を優先して検査します。パッケージの027を検査する場合は上記のように明示してください。
+- `--launcher` を省略すると、PATHで見つかった `rogue-mac` を優先して検査します。今回の修正版を検査する場合は上記のように `./rogue-mac` を明示してください。
 
-## 2. Homebrew Releaseを公開した後に確認
+## 2. 028 Release候補とHomebrew更新の確認
 
-現時点で同梱Formulaは**未公開のReleaseタグ** `vrogue-mac.027` を指します。GitHubでReleaseを作成するまでは `brew upgrade rogue-mac` は新しいアーカイブを取得できません。
+公開済み `vrogue-mac.027` は旧版 `0.3.24` を指し、第5-B修正は含まれません。今回の `vrogue-mac.028` / `0.3.25` は**公開準備用の候補**です。アップロード後にHomebrew Formulaを更新してください。
 
-1. Release `vrogue-mac.027` に `rogue-mac-027.tar.gz` を添付します。
-2. tap `leopard-gecko/homebrew-game` のルートにある `rogue-mac.rb` を同梱ファイルで更新します（このリポジトリは `Formula/` でなくルートにFormulaを置いています）。
-3. 更新後のMacで以下を実行します。
+1. `rogue-mac-028.tar.gz` のSHA-256が `rogue-mac.rb` の `sha256` と一致することを確認します。
+2. Mac実機でこのフォルダの `./rogue-mac` を使い、下記の対話式操作と5.2の`jump`設定を確認します。
+3. GitHub Release `vrogue-mac.028` を公開し、`rogue-mac-028.tar.gz` を添付します。
+4. tap `leopard-gecko/homebrew-game` のルートにある `rogue-mac.rb` を更新します。
+5. Macで以下を実行します。既にインストール済みなら `brew upgrade`、初めてなら `brew install` を使用します。
 
 ```sh
 brew update
-brew upgrade rogue-mac
-brew test rogue-mac
+brew upgrade leopard-gecko/game/rogue-mac
+brew test leopard-gecko/game/rogue-mac
 rogue-mac --version
 sh ./macos-check.sh --brew-test
 ```
 
-`brew upgrade` は既にインストール済みの場合です。初回は `brew install leopard-gecko/game/rogue-mac` を利用します。`brew test` が成功しても、それだけではゲーム本体の実際の起動、端末表示、設定共有が正しく動く保証にはなりません。
+`rogue-mac --version` の期待値は `rogue-mac 0.3.25` です。`brew test` に成功しても、GUIの設定往復やゲーム本体の実動作については別途確認が必要です。
 
 ## 3. 手動確認（1台のMacで行う）
 
-1. Terminal.appを**明るい背景**に設定し、`rogue-mac` を起動。メニュー文字の背後に不自然な背景色の帯がないこと。`Q` で抜けると画面が消去され、端末本来の背景色で「それでは、またね。」が出ること。
-2. `rogue-mac --mono` では端末既定色が使用されること。
+1. Terminal.appを**明るい背景**に設定し、展開先で `sh ./rogue-mac` を起動。メニュー文字の背後に不自然な背景色の帯がないこと。`Q` で抜けると画面が消去され、端末本来の背景色で「それでは、またね。」が出ること。
+2. `sh ./rogue-mac --mono` では端末既定色が使用されること。
 3. GUI版を起動し、最後に選択したバージョンを5.2などへ変更して終了。CUI起動後にReturnで**同じバージョン**を選ぶこと（起動前のセーブは適切にバックアップ）。
 4. GUI版でプレイヤー名・果物を変更して終了し、CUIで `P` に表示されること。CUIで変更した結果が、GUI版を**再起動したとき**に反映されること。変更後は元の名前・果物へ戻してください。
 5. GUI版で各バージョンの言語とモードを変更し、CUI `S` の表示に反映されること。反対方向の変更も同様に確認。共有設定の初期値には勝手に書き込まれないこと。
@@ -53,4 +55,26 @@ sh ./macos-check.sh --brew-test
 
 ## 静的確認の範囲と制約
 
-同梱ソースは026からバージョン表記のみ更新。既存の`com.leopard.rogue`保存形式や起動・終了処理に変更はありません。Homebrew Formulaの依存先5種はGitHub上の tap の現在のFormula名と一致することを確認しました。**GUIの現在のAppleScriptソースは同梱されていないため、GUI内部のキーの完全な一致については、今回のソースだけから断定できません。**
+同梱ソースは第5-B段階で5.2の`jump`設定処理を更新し、028向けにバージョンを変更しました。既存の`com.leopard.rogue`設定ドメインや、ほかのバージョンの起動・終了処理は維持しています。Homebrew Formulaの依存先5種はGitHub上の tap の現在のFormula名と一致することを確認しました。**GUIの現在のAppleScriptソースは同梱されていないため、GUI内部のキーの完全な一致については、今回のソースだけから断定できません。**
+
+
+## 5. 第5-B段階：5.2のジャンプ設定
+
+GUIは、今回提供されたAppleScript `Rogue_AppleScript_52_jump_external_only_20261124` を使用します。
+
+1. GUIの5.2通常設定には `jump` の選択項目がなく、CUIでは5.2の `S` → `A`（全オプション）に `jump` があることを確認します。選択肢は「有効／無効」の2つだけで、「自動」は表示されません。
+2. CUIの `jump` 個別設定が未保存なら、外部 `ROGUEOPTS` に `jump`／`nojump` の指定がない場合はゲーム本体の既定動作となることを確認します。GUIも強制指定しません。
+3. CUIの個別設定が未保存なら、ログインシェルの `ROGUEOPTS=jump`／`ROGUEOPTS=nojump` が新規ゲームに反映されることを確認します。
+4. CUIの5.2全オプションで「有効」を選択すると、外部設定の有無にかかわらず `jump` が指定され、「無効」では `nojump` が指定されることを確認します。通常モードの変更はこの個別選択を消去しません。
+5. CUIの5.2全オプションから `R`（個別設定をリセット）を実行した後は、外部の指定またはゲーム本体の既定値に戻ることを確認します。GUI側の旧キー `SavedVersion52_myjump` は参照されません。
+
+**注意：** GUI/CUIは継承した一時的な `ROGUEOPTS=jump` ではなく、登録済みログインシェルの初期化処理で設定された値を読みます。確認には `sh ./rogue-mac --show-rogueopts` を利用できますが、表示にはプライベートな設定値が含まれる場合があるため、公開しないでください。設定の有無はシェル起動設定側で管理します。
+
+## 6. 第5-B段階の静的診断
+
+```sh
+sh ./macos-stage5b-check.sh --repo . \
+  --applescript /path/to/Rogue_AppleScript_52_jump_external_only_20261124.txt
+```
+
+`--applescript` を省略するとCUI単体を検証します。値を出力せず、GUI・ゲームを起動せず、設定やセーブを変更しません。AppleScriptは別配布なので任意で指定してください。GUIの実動作・端末表示については、上の手動確認が必要です。

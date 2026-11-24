@@ -1,8 +1,8 @@
 #!/bin/sh
-# Rogue for macOS - terminal launcher (0.3.24)
+# Rogue for macOS - terminal launcher (0.3.25)
 # Shell-only interface; game files stay in the same directories as the GUI launcher.
 
-VERSION=0.3.24
+VERSION=0.3.25
 BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
 # Both the AppleScript GUI and this launcher use NSUserDefaults suite
 # "com.leopard.rogue". The defaults utility shares its preference domain.
@@ -998,7 +998,7 @@ advanced_shared_target() {
         54:idscrl) printf 'idscrl' ;;
         54:terse|dos:terse|36:terse|52:terse) printf 'terse' ;;
         54:passgo|clone:passgo|52:passgo) printf 'passgo' ;;
-        clone:jump|36:jump|52:jump) printf 'jump' ;;
+        clone:jump|36:jump) printf 'jump' ;;
         36:askme|52:askme) printf 'askme' ;;
         dos:extchars) printf 'mapchars' ;;
         dos:doskeys) printf 'commands' ;;
@@ -1885,6 +1885,10 @@ without_profile_options() {
         case "$opt" in file|name|fruit|language) continue ;; esac
         # The GUI supplies these values; do not send contradictory tokens.
         [ -z "$(advanced_shared_target "$opt")" ] || continue
+        # As with other additional options, an explicit 5.2 Jump choice
+        # overrides the login shell. Without a saved choice, pass the
+        # login-shell jump/nojump token through unchanged.
+        # The GUI's SavedVersion52_myjump is deliberately not consulted.
         # A user's explicit detailed-menu selection overrides the login shell.
         case "$GAME_ID:$opt" in
             clone:noskull|clone:notomb) extra_override=$(advanced_pref_read noskull) ;;
@@ -1892,7 +1896,7 @@ without_profile_options() {
         esac
         [ "$extra_override" = inherit ] || continue
         case "$GAME_ID:$opt" in
-            54:cursor|clone:cursor|dos:cursor|52:cursor|52:jump) continue ;;
+            54:cursor|clone:cursor|dos:cursor|52:cursor) continue ;;
             54:inven)
                 # 5.4's parser matches `inven=` against the *localized*
                 # inventory-style names.  A user's external ROGUEOPTS may
@@ -2004,7 +2008,9 @@ new_game_options() {
             append_game_option "$terse_opt" ;;
         52)
             append_game_option "$display_color"
-            if [ "$S_JUMP" = True ]; then append_game_option jump; else append_game_option nojump; fi
+            # No forced jump/nojump from the mode preset. The detailed-menu
+            # on/off choice (if saved) is appended below; otherwise an external
+            # login-shell token, or the game's own default, takes precedence.
             append_game_option "$passgo_opt"
             if [ "$S_ASKME" = True ]; then append_game_option askme; else append_game_option noaskme; fi
             append_game_option "$terse_opt" ;;
