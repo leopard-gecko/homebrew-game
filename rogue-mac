@@ -1,0 +1,2258 @@
+#!/bin/sh
+# Rogue for macOS - terminal launcher (0.3.24)
+# Shell-only interface; game files stay in the same directories as the GUI launcher.
+
+VERSION=0.3.24
+BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
+# Both the AppleScript GUI and this launcher use NSUserDefaults suite
+# "com.leopard.rogue". The defaults utility shares its preference domain.
+DEFAULTS_DOMAIN=com.leopard.rogue
+# All options use the AppleScript-shared domain. No CUI-specific store.
+DEFAULTS_CMD=$(command -v defaults 2>/dev/null || :)
+PLAYER_NAME=
+PLAYER_FRUIT=''
+GAME_ROGUEOPTS=''
+# Tracked until the input editor's result has been read and removed.
+INPUT_TMP=''
+# Read only the user's registered login-shell startup environment, as in the GUI.
+# Never use the process-inherited ROGUEOPTS as a fallback.
+EXTERNAL_INITIAL_ROGUEOPTS=''
+EXTERNAL_ROGUEOPTS=''
+EXTERNAL_EDITED_IDS=''
+PROFILE_EDITED=0
+LAST_ID=54
+S_MODE= S_LANGUAGE= S_COLOR= S_IDSCRL= S_TERSE= S_PASSGO= S_JUMP= S_ASKME= S_MAPCHARS= S_COMMANDS= S_MACRO=
+UI_MONO=0
+COLORS=0
+GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
+[ -n "${NO_COLOR:-}" ] && UI_MONO=1
+
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in
+    ja*|JA*) LANG_JA=1 ;;
+    *)       LANG_JA=0 ;;
+esac
+
+usage() {
+    cat <<'EOF'
+Rogue for macOS
+
+Usage: rogue-mac [54|clone|dos|36|52] [game-arguments...]
+       rogue-mac --list
+       rogue-mac --mono
+       rogue-mac --show-rogueopts
+       rogue-mac --help
+
+Launch from the version menu, or select a game directly.
+When a default saved game exists, choose Resume, New, another File, or Back.
+After the game ends, choose Play again, Menu, or Quit.
+Return selects the last version chosen by either launcher.
+P edits the shared player name/fruit; S edits per-version game settings.
+Within S, A opens all game options, using GUI-shared values where available.
+Saved additional options are applied to newly started games.
+DOS Tribute macros are limited to 40 bytes (and cannot contain the x trigger).
+The login-shell ROGUEOPTS is read at startup and refreshed before games.
+--show-rogueopts displays the freshly read login-shell setting without launching a game.
+G opens a version-specific online guide in your default web browser.
+The menu follows the AppleScript GUI preferences in com.leopard.rogue.
+Game arguments are passed directly to the selected Rogue executable.
+
+The launcher uses the same directories as the Rogue for macOS GUI:
+  ~/Library/Application Support/Rogue/{5.4,Clone III,DOS 1.48,3.6,5.2}/
+EOF
+}
+
+list_versions() {
+    printf '1. Rogue 5.4\n'
+    printf '2. Rogue Clone III\n'
+    printf '3. Rogue DOS Tribute\n'
+    printf '4. Rogue 3.6\n'
+    printf '5. Rogue 5.2\n'
+}
+
+resolve_version() {
+    case "$1" in
+        1|54|5.4|5.4.5|rogue54) GAME_ID=54 ;;
+        2|clone|c3|clone3|rogue-c3|"Clone III") GAME_ID=clone ;;
+        3|dos|dos148|rogue-dos|"DOS Tribute"|"DOS 1.48風") GAME_ID=dos ;;
+        4|36|3.6|rogue36) GAME_ID=36 ;;
+        5|52|5.2|rogue52) GAME_ID=52 ;;
+        *) return 1 ;;
+    esac
+    return 0
+}
+
+# The version-to-preference namespace is shared by language selection,
+# ordinary settings, and the additional-options menu. Keep the mapping in
+# one place so new versions cannot accidentally read a different namespace.
+version_settings_prefix() {
+    case "$1" in
+        54) printf 'SavedVersion54' ;;
+        clone) printf 'SavedVersionCloneIII' ;;
+        dos) printf 'SavedVersionDOS148' ;;
+        36) printf 'SavedVersion36' ;;
+        52) printf 'SavedVersion52' ;;
+        *) return 1 ;;
+    esac
+}
+setup_game() {
+    case "$GAME_ID" in
+        54)
+            GAME_TITLE='Rogue 5.4'
+            GAME_BIN=rogue54
+            GAME_DIR=$BASE_DIR/5.4
+            GUI_VERSION='5.4'
+            SAVE_FILE=rogue.save ;;
+        clone)
+            GAME_TITLE='Rogue Clone III'
+            GAME_BIN=rogue-c3
+            GAME_DIR=$BASE_DIR/Clone\ III
+            GUI_VERSION='Clone III'
+            SAVE_FILE=rogue-clone.save ;;
+        dos)
+            GAME_TITLE='Rogue DOS Tribute'
+            GAME_BIN=rogue-dos
+            GAME_DIR=$BASE_DIR/DOS\ 1.48
+            GUI_VERSION='DOS Tribute'
+            SAVE_FILE=rogue-dos.save ;;
+        36)
+            GAME_TITLE='Rogue 3.6'
+            GAME_BIN=rogue36
+            GAME_DIR=$BASE_DIR/3.6
+            GUI_VERSION='3.6'
+            SAVE_FILE=rogue36.save ;;
+        52)
+            GAME_TITLE='Rogue 5.2'
+            GAME_BIN=rogue52
+            GAME_DIR=$BASE_DIR/5.2
+            GUI_VERSION='5.2'
+            SAVE_FILE=rogue52.save ;;
+        *) return 1 ;;
+    esac
+    SETTINGS_PREFIX=$(version_settings_prefix "$GAME_ID") || return 1
+}
+
+read_selection() {
+    # Use canonical terminal input (Return confirms), so terminal settings need no changes.
+    IFS= read -r ANSWER || return 1
+    return 0
+}
+
+# These checks are shared by screen painting, color setup and normal reset.
+# Reading the tty size never consumes keyboard input or changes its modes.
+terminal_has_ansi() {
+    [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]
+}
+terminal_size() {
+    tty_size=$(stty size 2>/dev/null) || tty_size=''
+    tty_size_rows=${tty_size%% *}
+    tty_size_cols=${tty_size#* }
+}
+
+# Use the same UTF-8 line editor for every editable preference and path.
+# This helper only chooses the message; input validation remains with callers.
+read_named_text() {
+    case "$1:$LANG_JA" in
+        value:1) text_prompt='新しい値（空欄でキャンセル）› ' ;;
+        value:0) text_prompt='New value (blank cancels) › ' ;;
+        name:1) text_prompt='新しいプレイヤー名（空欄で変更せず戻る）: ' ;;
+        name:0) text_prompt='New player name (blank to cancel): ' ;;
+        fruit:1) text_prompt='好きな果物の名前（空欄で変更せず戻る）: ' ;;
+        fruit:0) text_prompt='Favorite fruit (blank to cancel): ' ;;
+        path:1) text_prompt='セーブファイルのパス（空欄で戻る）: ' ;;
+        path:0) text_prompt='Path to saved game (blank to cancel): ' ;;
+        *) return 1 ;;
+    esac
+    read_text_input "$text_prompt"
+}
+
+# Menu keys keep the traditional canonical input. For editable UTF-8
+# strings, use a dedicated line editor: macOS Terminal's canonical erase
+# handling can remove a UTF-8 byte at a time and echo arrow escape codes.
+# This editor removes whole grapheme clusters (including Japanese and emoji),
+# supports Left/Right/Home/End/Delete and Ctrl-U, and restores terminal modes
+# even on SIGINT/TERM/HUP. Its Perl dependencies are included with macOS.
+# The editor runs in the foreground, never in command substitution: otherwise
+# reading /dev/tty could trigger SIGTTIN under zsh job control.
+read_text_input() {
+    line_prompt=$1
+    if [ ! -t 0 ] || [ ! -t 1 ] || ! command -v perl >/dev/null 2>&1; then
+        printf '%s' "$line_prompt"
+        read_selection
+        return $?
+    fi
+    line_tmp=$(mktemp "${TMPDIR:-/tmp}/rogue-mac-input.XXXXXX") || {
+        printf '%s' "$line_prompt"
+        read_selection
+        return $?
+    }
+    # The EXIT trap also removes this file if the shell is interrupted.
+    INPUT_TMP=$line_tmp
+    terminal_size
+    line_cols=$tty_size_cols
+    case "$line_cols" in ''|*[!0-9]*) line_cols=80 ;; esac
+    perl - "$line_prompt" "$line_cols" >"$line_tmp" <<'ROGUE_MAC_LINE_EDITOR'
+# Edit UTF-8 text by Unicode grapheme clusters; no non-core Perl modules.
+use strict;
+use warnings;
+use POSIX qw(TCSANOW ICANON ECHO VMIN VTIME);
+use Encode qw(decode encode FB_CROAK);
+
+my $prompt = eval { decode(q(UTF-8), shift(@ARGV) // q(), FB_CROAK) } // q();
+my $columns = shift(@ARGV) || 80;
+$columns = 80 if $columns !~ /\A\d+\z/ || $columns < 20 || $columns > 500;
+open my $tty, q(+<), q(/dev/tty) or exit 2;
+binmode($tty, q(:raw));
+binmode(STDOUT, q(:raw));
+my $fd = fileno($tty);
+my $old = POSIX::Termios->new();
+$old->getattr($fd) or exit 2;
+my $now = POSIX::Termios->new();
+$now->getattr($fd) or exit 2;
+$now->setlflag($now->getlflag() & ~(ICANON | ECHO));
+$now->setcc(VMIN, 1);
+$now->setcc(VTIME, 0);
+$now->setattr($fd, TCSANOW) or exit 2;
+my $restore = sub { $old->setattr($fd, TCSANOW); };
+END { $restore->() if $restore; }
+$SIG{INT} = sub { exit 130; };
+$SIG{TERM} = sub { exit 143; };
+$SIG{HUP} = sub { exit 129; };
+
+sub width {
+    my ($g) = @_;
+    return 0 if $g !~ /\P{Grapheme_Extend}/;
+    return 2 if $g =~ /\p{East_Asian_Width=Wide}|\p{East_Asian_Width=Fullwidth}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\x{FE0F}/;
+    return 1;
+}
+sub string_width {
+    my ($s) = @_;
+    my $w = 0;
+    $w += width($_) for $s =~ /\X/g;
+    return $w;
+}
+sub put_tty {
+    my ($s) = @_;
+    my $data = encode(q(UTF-8), $s);
+    my $total = length($data);
+    my $off = 0;
+    while ($off < $total) {
+        my $n = syswrite($tty, $data, $total - $off, $off);
+        last if !defined $n || !$n;
+        $off += $n;
+    }
+}
+my @cells;
+my $cursor = 0;
+my $view_start = 0;
+sub render {
+    my $available = $columns - string_width($prompt) - 1;
+    $available = 5 if $available < 5;
+    $view_start = $cursor if $cursor < $view_start;
+    my $cw = 0;
+    $cw += width($cells[$_]) for $view_start .. $cursor - 1;
+    while ($cw > $available && $view_start < $cursor) {
+        $cw -= width($cells[$view_start++]);
+    }
+    my $display = q();
+    my $used = 0;
+    for my $i ($view_start .. $#cells) {
+        my $w = width($cells[$i]);
+        last if $used + $w > $available;
+        $display .= $cells[$i];
+        $used += $w;
+    }
+    put_tty("\r\e[2K" . $prompt . $display);
+    my $back = $used - $cw;
+    put_tty("\e[${back}D") if $back > 0;
+}
+sub read_byte {
+    my ($time) = @_;
+    if (defined $time) {
+        my $rin = q();
+        vec($rin, $fd, 1) = 1;
+        my $count = select($rin, undef, undef, $time);
+        return undef if !$count;
+    }
+    my $b = q();
+    my $n = sysread($tty, $b, 1);
+    return undef if !defined $n || $n == 0;
+    return ord($b);
+}
+sub apply_edit_action {
+    my ($action) = @_;
+    if ($action eq q(clear)) {
+        @cells = (); $cursor = 0; $view_start = 0;
+    } elsif ($action eq q(home)) {
+        $cursor = 0;
+    } elsif ($action eq q(end)) {
+        $cursor = scalar(@cells);
+    } elsif ($action eq q(left)) {
+        $cursor-- if $cursor > 0;
+    } elsif ($action eq q(right)) {
+        $cursor++ if $cursor < @cells;
+    } elsif ($action eq q(backspace)) {
+        splice(@cells, --$cursor, 1) if $cursor > 0;
+    } elsif ($action eq q(delete)) {
+        splice(@cells, $cursor, 1) if $cursor < @cells;
+    }
+    render();
+}
+sub insert_char {
+    my ($c) = @_;
+    my $before = $cursor ? join(q(), @cells[0 .. $cursor - 1]) : q();
+    my $after = $cursor <= $#cells ? join(q(), @cells[$cursor .. $#cells]) : q();
+    my $new = $before . $c . $after;
+    # Prevent unbounded line-editor memory use. Game-specific lower limits
+    # are validated by the existing caller after Return.
+    return if length(encode(q(UTF-8), $new)) > 4096;
+    @cells = ($new =~ /\X/g);
+    my $length_before = length($before . $c);
+    $cursor = 0;
+    my $count_chars = 0;
+    for my $g (@cells) {
+        last if $count_chars >= $length_before;
+        $count_chars += length($g);
+        $cursor++;
+    }
+}
+render();
+while (1) {
+    my $b = read_byte(undef);
+    last if !defined $b;
+    if ($b == 13 || $b == 10) {
+        put_tty("\r\n");
+        print STDOUT encode(q(UTF-8), join(q(), @cells));
+        exit 0;
+    }
+    if ($b == 4 && !@cells) { put_tty("\r\n"); exit 1; }
+    if ($b == 21) { apply_edit_action(q(clear)); next; }
+    if ($b == 1) { apply_edit_action(q(home)); next; }
+    if ($b == 5) { apply_edit_action(q(end)); next; }
+    if ($b == 8 || $b == 127) { apply_edit_action(q(backspace)); next; }
+    if ($b == 27) {
+        my $b2 = read_byte(.08);
+        if (!defined $b2) { put_tty("\r\n"); exit 0; }
+        if ($b2 == 91 || $b2 == 79) {
+            my $seq = q();
+            for (1 .. 16) {
+                my $next = read_byte(.08);
+                last if !defined $next;
+                $seq .= chr($next);
+                last if $next >= 64 && $next <= 126;
+            }
+            my $action = q();
+            if ($seq =~ /\A[0-9;]*D\z/) { $action = q(left); }
+            elsif ($seq =~ /\A[0-9;]*C\z/) { $action = q(right); }
+            elsif ($seq =~ /\A(?:[0-9;]*H|1~|7~)\z/) { $action = q(home); }
+            elsif ($seq =~ /\A(?:[0-9;]*F|4~|8~)\z/) { $action = q(end); }
+            elsif ($seq eq q(3~)) { $action = q(delete); }
+            apply_edit_action($action);
+        }
+        next;
+    }
+    next if $b < 32;
+    if ($b < 128) { insert_char(chr($b)); render(); next; }
+    my $expected = ($b & 0xE0) == 0xC0 ? 2 : ($b & 0xF0) == 0xE0 ? 3 : ($b & 0xF8) == 0xF0 ? 4 : 0;
+    next if !$expected;
+    my $bytes = pack(q(C), $b);
+    for (2 .. $expected) {
+        my $next = read_byte(.5);
+        last if !defined $next;
+        $bytes .= pack(q(C), $next);
+    }
+    my $char = eval { decode(q(UTF-8), $bytes, FB_CROAK) };
+    if (defined $char && $char !~ /\p{Cc}/) { insert_char($char); render(); }
+}
+put_tty("\r\n");
+exit 1;
+ROGUE_MAC_LINE_EDITOR
+    line_status=$?
+    if [ "$line_status" -eq 0 ]; then
+        if ! ANSWER=$(cat "$line_tmp"); then
+            ANSWER=''
+            line_status=1
+        fi
+    else
+        ANSWER=''
+    fi
+    rm -f "$line_tmp"
+    INPUT_TMP=''
+    # A signal received by the editor should end the launcher as well;
+    # returning to its menu would treat the interruption as cancellation.
+    case "$line_status" in 129|130|131|143) exit "$line_status" ;; esac
+    return "$line_status"
+}
+
+# Paint the entire terminal grid rather than only setting a black SGR
+# background for printed characters. Terminal.app may use a light default
+# background and need explicit spaces for previously blank cells.
+# Screen dimensions are read without consuming input or changing tty modes.
+clear_screen() {
+    if terminal_has_ansi; then
+        if [ "$COLORS" -eq 1 ]; then
+            terminal_size
+            screen_rows=$tty_size_rows
+            screen_cols=$tty_size_cols
+            case "$screen_rows:$screen_cols" in
+                *[!0-9:]*|:*|*:|:) screen_rows=24; screen_cols=80 ;;
+            esac
+            if [ "$screen_rows" -lt 1 ] || [ "$screen_cols" -lt 1 ] ||
+               [ "$screen_rows" -gt 300 ] || [ "$screen_cols" -gt 500 ]; then
+                screen_rows=24; screen_cols=80
+            fi
+            printf '%s\033[2J\033[H' "$RST"
+            screen_row=1
+            while [ "$screen_row" -le "$screen_rows" ]; do
+                printf '\033[%d;1H%*s' "$screen_row" "$screen_cols" ''
+                screen_row=$((screen_row + 1))
+            done
+            printf '\033[H'
+        else
+            # --mono intentionally keeps the terminal's own colors.
+            printf '\033[0m\033[2J\033[H'
+        fi
+    fi
+}
+
+# Leave terminal colors and background untouched when Rogue takes over and
+# when printing the farewell. Never leave painted black cells behind on exit.
+clear_terminal_screen() {
+    reset_screen_colors
+    if terminal_has_ansi; then
+        printf '\033[2J\033[H'
+    fi
+}
+
+init_colors() {
+    COLORS=0 GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
+    if [ "$UI_MONO" -eq 0 ] && terminal_has_ansi; then
+        COLORS=1
+        # Launcher menus have a solid black background, independently of the
+        # Terminal profile. RST restores a readable light foreground on black.
+        RST=$(printf '\033[0;38;5;252;40m')
+        GOLD=$(printf '\033[38;5;180m')
+        TITLE=$(printf '\033[38;5;223m')
+        TEXT=$(printf '\033[38;5;252m')
+        DIM=$(printf '\033[38;5;109m')
+        SAVE_COLOR=$DIM
+    fi
+}
+reset_screen_colors() {
+    # Restore the user's normal foreground/background and other attributes.
+    if terminal_has_ansi; then printf '\033[0m'; fi
+}
+cleanup_launcher() {
+    # No normal exit, EOF or trapped signal may leave temporary input behind.
+    if [ -n "$INPUT_TMP" ]; then rm -f "$INPUT_TMP" 2>/dev/null || :; fi
+    reset_screen_colors
+}
+line52() {
+    i=0
+    while [ "$i" -lt 52 ]; do printf '─'; i=$((i+1)); done
+}
+
+menu_heading() {
+    printf '%s%s%s\n' "$TITLE" "$1" "$RST"
+}
+menu_numbered_choice() {
+    printf '  %s%2s%s  %s\n' "$GOLD" "$1" "$RST" "$2"
+}
+menu_key_choice() {
+    printf '  %s%s%s  %s\n' "$GOLD" "$1" "$RST" "$2"
+}
+menu_advanced_current() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '  現在の設定：%s\n\n' "$1"
+    else
+        printf '  Current setting: %s\n\n' "$1"
+    fi
+}
+# Control characters are not rendered from editable preferences.
+clean_text() {
+    printf '%s' "$1" | LC_ALL=C tr -d '\000-\037\177'
+}
+read_pref() {
+    # Missing preference -> explicit fallback, without modifying the GUI store.
+    key=$1 fallback=$2
+    if [ -n "$DEFAULTS_CMD" ]; then
+        found=$("$DEFAULTS_CMD" read "$DEFAULTS_DOMAIN" "$key" 2>/dev/null) || found=''
+        if [ -n "$found" ]; then printf '%s' "$found"; return 0; fi
+    fi
+    printf '%s' "$fallback"
+}
+load_last_version() {
+    saved=$(read_pref Savedmygameversion '5.4')
+    if resolve_version "$saved"; then LAST_ID=$GAME_ID; else LAST_ID=54; fi
+}
+# AppleScript-compatible ROGUEOPTS retrieval from the account's login shell.
+# dscl provides UserShell; env -u removes a potentially stale inherited value.
+# GUI AppleScript runs its login-shell probe without a controlling terminal.
+# A terminal launcher must explicitly do the same: an interactive zsh -lic
+# can otherwise seize the foreground terminal process group and leave this
+# launcher stopped by SIGTTIN ("zsh: suspended (tty input) ./rogue-mac").
+# setsid() plus /dev/null stdin keeps the probe completely off the user's TTY.
+# A 5-second Perl alarm covers shell initialization hooks that might hang.
+# Markers isolate the value from banners or commands printed by the shell.
+read_external_rogueopts() {
+    [ -x /usr/bin/dscl ] && [ -x /usr/bin/perl ] && [ -x /usr/bin/env ] || return 0
+    ex_user=$(/usr/bin/id -un 2>/dev/null) || return 0
+    ex_login_shell=$(/usr/bin/dscl . -read "/Users/$ex_user" UserShell 2>/dev/null | /usr/bin/awk '$1 == "UserShell:" { print $2; exit }')
+    case "$ex_login_shell" in /*) [ -x "$ex_login_shell" ] || return 0 ;; *) return 0 ;; esac
+    ex_begin='__ROGUEOPTS_CUI_BEGIN_83619__'
+    ex_end='__ROGUEOPTS_CUI_END_83619__'
+    ex_probe='/usr/bin/perl -e '\''print "\n__ROGUEOPTS_CUI_BEGIN_83619__\n"; print defined($ENV{ROGUEOPTS}) ? $ENV{ROGUEOPTS} : ""; print "\n__ROGUEOPTS_CUI_END_83619__\n"; '\'''
+    # Fork first: a command-substitution process may be a process-group leader,
+    # and setsid() fails in a group leader.  A fresh forked child never is one.
+    # Only the detached child runs the interactive login shell; the parent
+    # enforces the deadline, including shells that refuse EOF on /dev/null.
+    ex_result=$(/usr/bin/perl -MPOSIX=setsid -e '
+        my $pid = fork(); defined($pid) or exit 1;
+        if ($pid == 0) {
+            setsid() >= 0 or exit 1;
+            open(STDIN, "<", "/dev/null") or exit 1;
+            exec @ARGV;
+            exit 1;
+        }
+        $SIG{ALRM} = sub { kill "KILL", -$pid; kill "KILL", $pid; exit 1; };
+        alarm 5;
+        waitpid($pid, 0);
+        my $status = $?;
+        alarm 0;
+        exit(($status == 0) ? 0 : 1);
+    ' /usr/bin/env -u ROGUEOPTS "$ex_login_shell" -lic "$ex_probe" </dev/null 2>/dev/null) || return 0
+    case "$ex_result" in *"$ex_begin"*"$ex_end"*) : ;; *) return 0 ;; esac
+    ex_result=${ex_result#*"$ex_begin"}
+    ex_result=${ex_result#?} # remove the marker's newline
+    ex_result=${ex_result%%"$ex_end"*}
+    ex_result=${ex_result%?} # remove newline before closing marker
+    # Newlines and control bytes cannot be safe comma-separated ROGUEOPTS.
+    case "$ex_result" in *'
+'*|*'
+'*) return 0 ;; esac
+    printf '%s' "$ex_result"
+}
+
+# Resolve complete names and unambiguous historical abbreviations.  Unknown
+# options remain opaque and may pass through to their original game parser.
+external_option_key() {
+    ex_key_raw=$(printf '%s' "${1%%=*}" | LC_ALL=C tr '[:upper:]' '[:lower:]')
+    ex_key_candidate=$ex_key_raw
+    case "$ex_key_candidate" in
+        noaskquit|noskull|notomb) printf '%s' "$ex_key_candidate"; return ;;
+        no*) ex_key_candidate=${ex_key_candidate#no} ;;
+    esac
+    case "$ex_key_candidate" in
+        color|cursor|idscrl|terse|passgo|jump|askme|extchars|monster|macro|doskeys|name|fruit|language|file|flush|step|seefloor|tombstone|inven|menu)
+            printf '%s' "$ex_key_candidate"; return ;;
+    esac
+    [ "${#ex_key_candidate}" -ge 2 ] || { printf '%s' "$ex_key_raw"; return; }
+    ex_key_hits=0 ex_key_found=''
+    for ex_key_known in color cursor idscrl terse passgo jump askme extchars monster macro doskeys name fruit language file flush step seefloor tombstone inven menu; do
+        case "$ex_key_known" in
+            "$ex_key_candidate"*) ex_key_hits=$((ex_key_hits+1)); ex_key_found=$ex_key_known ;;
+        esac
+    done
+    if [ "$ex_key_hits" -eq 1 ]; then printf '%s' "$ex_key_found"; else printf '%s' "$ex_key_raw"; fi
+}
+external_option_off() {
+    case "${1%%=*}" in no*) return 0 ;; *) return 1 ;; esac
+}
+external_option_value() {
+    case "$1" in *=*) printf '%s' "${1#*=}" ;; *) printf '' ;; esac
+}
+
+# Read the next comma-delimited ROGUEOPTS entry.  The caller owns the rest
+# of its string, so a nested option lookup cannot consume another scan.
+# Empty fields are skipped by the individual callers as before.
+next_rogueopts_item() {
+    [ -n "$1" ] || return 1
+    case "$1" in
+        *,*) ROGUEOPTS_ITEM=${1%%,*}; ROGUEOPTS_REST=${1#*,} ;;
+        *) ROGUEOPTS_ITEM=$1; ROGUEOPTS_REST='' ;;
+    esac
+    ROGUEOPTS_ITEM=$(printf '%s' "$ROGUEOPTS_ITEM" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    return 0
+}
+
+# 5.4's inventory parser accepts names in the *current game language*.
+# Normalize the historical English/Japanese spellings once for both the
+# external-option inspector and the new-game environment builder.
+inventory_mode_from_value() {
+    case "$1" in
+        [Oo]*|上書き*) printf 'Overwrite' ;;
+        [Ss]*|低速*) printf 'Slow' ;;
+        [Cc]*|クリア*) printf 'Clear' ;;
+    esac
+}
+inventory_mode_for_game() {
+    if [ "$S_LANGUAGE" = English ]; then
+        printf '%s' "$1"
+    else
+        case "$1" in
+            Overwrite) printf '上書き' ;;
+            Slow) printf '低速' ;;
+            Clear) printf 'クリア' ;;
+        esac
+    fi
+}
+external_language_from_initial() {
+    ex_l_remaining=$EXTERNAL_INITIAL_ROGUEOPTS
+    ex_l_language=''
+    while next_rogueopts_item "$ex_l_remaining"; do
+        ex_l_remaining=$ROGUEOPTS_REST
+        ex_l_item=$ROGUEOPTS_ITEM
+        if [ "$(external_option_key "$ex_l_item")" = language ]; then
+            case "$(external_option_value "$ex_l_item")" in
+                ja|en) ex_l_language=$(external_option_value "$ex_l_item") ;;
+            esac
+        fi
+    done
+    printf '%s' "$ex_l_language"
+}
+version_edited() {
+    case " $EXTERNAL_EDITED_IDS " in *" $GAME_ID "*) return 0 ;; *) return 1 ;; esac
+}
+mark_version_edited() {
+    version_edited || EXTERNAL_EDITED_IDS="$EXTERNAL_EDITED_IDS $GAME_ID"
+}
+
+# Map only the shared, GUI-editable keys.  No preference is written while
+# reading external shell defaults.  Unsupported keys remain pass-through.
+apply_external_gui_settings() {
+    [ -n "$EXTERNAL_INITIAL_ROGUEOPTS" ] || return 0
+    version_edited && return 0
+    ex_g_remaining=$EXTERNAL_INITIAL_ROGUEOPTS
+    ex_g_changed=0
+    while next_rogueopts_item "$ex_g_remaining"; do
+        ex_g_remaining=$ROGUEOPTS_REST
+        ex_g_item=$ROGUEOPTS_ITEM
+        ex_g_key=$(external_option_key "$ex_g_item")
+        ex_g_value=$(external_option_value "$ex_g_item")
+        if external_option_off "$ex_g_item"; then ex_g_bool=off; else ex_g_bool=on; fi
+        ex_g_target=$(advanced_shared_target "$ex_g_key")
+        case "$ex_g_target:$ex_g_key" in
+            language:language)
+                case "$ex_g_value" in
+                    ja) S_LANGUAGE='日本語' ;; en) S_LANGUAGE=English ;;
+                esac ;;
+            color:color)
+                if [ "$ex_g_bool" = on ]; then ex_g_next=カラー; else ex_g_next=モノクロ; fi
+                [ "$S_COLOR" = "$ex_g_next" ] || { S_COLOR=$ex_g_next; ex_g_changed=1; } ;;
+            idscrl:idscrl)
+                if [ "$ex_g_bool" = on ]; then ex_g_next='１種類'; else ex_g_next='５種類'; fi
+                [ "$S_IDSCRL" = "$ex_g_next" ] || { S_IDSCRL=$ex_g_next; ex_g_changed=1; } ;;
+            terse:terse)
+                if [ "$ex_g_bool" = on ]; then ex_g_next='短くする'; else ex_g_next=ふつう; fi
+                [ "$S_TERSE" = "$ex_g_next" ] || { S_TERSE=$ex_g_next; ex_g_changed=1; } ;;
+            passgo:passgo)
+                if [ "$ex_g_bool" = on ]; then ex_g_next=止まらない; else ex_g_next=止まる; fi
+                [ "$S_PASSGO" = "$ex_g_next" ] || { S_PASSGO=$ex_g_next; ex_g_changed=1; } ;;
+            jump:jump)
+                if [ "$ex_g_bool" = on ]; then ex_g_next=True; else ex_g_next=False; fi
+                [ "$S_JUMP" = "$ex_g_next" ] || { S_JUMP=$ex_g_next; ex_g_changed=1; } ;;
+            askme:askme)
+                if [ "$ex_g_bool" = on ]; then ex_g_next=True; else ex_g_next=False; fi
+                [ "$S_ASKME" = "$ex_g_next" ] || { S_ASKME=$ex_g_next; ex_g_changed=1; } ;;
+            mapchars:extchars)
+                if [ "$ex_g_bool" = on ]; then ex_g_next=拡張; else ex_g_next=基本; fi
+                [ "$S_MAPCHARS" = "$ex_g_next" ] || { S_MAPCHARS=$ex_g_next; ex_g_changed=1; } ;;
+            commands:doskeys)
+                if [ "$ex_g_bool" = on ]; then ex_g_next='DOS 1.48風'; else ex_g_next='5.4風'; fi
+                [ "$S_COMMANDS" = "$ex_g_next" ] || { S_COMMANDS=$ex_g_next; ex_g_changed=1; } ;;
+            macro:macro)
+                if advanced_validate_text macro "$ex_g_value" && [ "$S_MACRO" != "$ex_g_value" ]; then
+                    S_MACRO=$ex_g_value; ex_g_changed=1
+                fi ;;
+        esac
+    done
+    [ "$ex_g_changed" -eq 0 ] || S_MODE='細かく設定'
+}
+
+# A session's display language is selected explicitly. Unknown/absent
+# preferences leave the terminal locale unchanged, as before.
+apply_ui_language() {
+    case "$1" in
+        English) LANG_JA=0 ;;
+        日本語) LANG_JA=1 ;;
+    esac
+}
+load_ui_language() {
+    # The GUI stores language per version, with a global fallback.
+    language_prefix=$(version_settings_prefix "$LAST_ID") || return 1
+    fallback=$(read_pref Savedmylanguage '')
+    saved=$(read_pref "${language_prefix}_mylanguage" "$fallback")
+    apply_ui_language "$saved"
+    GAME_ID=$LAST_ID
+    if ! version_edited; then
+        case "$(external_language_from_initial)" in
+            ja) LANG_JA=1 ;; en) LANG_JA=0 ;;
+        esac
+    fi
+}
+# Reflect a selection in the GUI. Merely opening the menu never writes settings.
+remember_version() {
+    setup_game
+    write_profile_value Savedmygameversion "$GUI_VERSION" || return 1
+    LAST_ID=$GAME_ID
+    return 0
+}
+# The GUI preference suffixes and current shell variables form one schema.
+# Never use eval or dynamically named shell variables for preference values:
+# this explicit mapping is also safe for arbitrary UTF-8 user strings.
+game_setting_suffix() {
+    case "$1" in
+        mode) printf 'gamemode' ;; language) printf 'mylanguage' ;;
+        color) printf 'mycolor' ;; idscrl) printf 'myidscrl' ;;
+        terse) printf 'myterse' ;; passgo) printf 'mypassgo' ;;
+        jump) printf 'myjump' ;; askme) printf 'myaskme' ;;
+        mapchars) printf 'mymapchars' ;; commands) printf 'mycommands' ;;
+        macro) printf 'mymacro' ;;
+        *) return 1 ;;
+    esac
+}
+game_setting_key() {
+    gs_key_suffix=$(game_setting_suffix "$1") || return 1
+    printf '%s_%s' "$SETTINGS_PREFIX" "$gs_key_suffix"
+}
+game_setting_default() {
+    case "$1" in
+        mode) printf 'モダン' ;;
+        language) read_pref Savedmylanguage 日本語 ;;
+        color) printf 'カラー' ;;
+        idscrl) printf '１種類' ;;
+        terse) printf 'ふつう' ;;
+        passgo) printf '止まらない' ;;
+        jump) case "$GAME_ID" in clone|36|52) printf False ;; *) printf True ;; esac ;;
+        askme) case "$GAME_ID" in 36|52) printf True ;; *) printf False ;; esac ;;
+        mapchars) printf '拡張' ;;
+        commands) printf '5.4風' ;;
+        macro) printf 'v' ;;
+        *) return 1 ;;
+    esac
+}
+read_game_setting() {
+    gs_read_key=$(game_setting_key "$1") || return 1
+    gs_read_default=$(game_setting_default "$1") || return 1
+    read_pref "$gs_read_key" "$gs_read_default"
+}
+game_setting_value() {
+    case "$1" in
+        mode) printf '%s' "$S_MODE" ;; language) printf '%s' "$S_LANGUAGE" ;;
+        color) printf '%s' "$S_COLOR" ;; idscrl) printf '%s' "$S_IDSCRL" ;;
+        terse) printf '%s' "$S_TERSE" ;; passgo) printf '%s' "$S_PASSGO" ;;
+        jump) printf '%s' "$S_JUMP" ;; askme) printf '%s' "$S_ASKME" ;;
+        mapchars) printf '%s' "$S_MAPCHARS" ;; commands) printf '%s' "$S_COMMANDS" ;;
+        macro) printf '%s' "$S_MACRO" ;;
+        *) return 1 ;;
+    esac
+}
+# Validate stored values without writing defaults back to the GUI's domain.
+normalize_game_settings() {
+    case "$S_MODE" in 'モダン'|'クラシック'|'細かく設定') : ;; *) S_MODE='モダン' ;; esac
+    case "$S_LANGUAGE" in English) : ;; *) S_LANGUAGE='日本語' ;; esac
+    case "$S_COLOR" in カラー|モノクロ) : ;; *) S_COLOR=カラー ;; esac
+    case "$S_IDSCRL" in '１種類'|'５種類') : ;; *) S_IDSCRL='１種類' ;; esac
+    case "$S_TERSE" in '短くする'|'ふつう') : ;; *) S_TERSE='ふつう' ;; esac
+    case "$S_PASSGO" in '止まらない'|'止まる') : ;; *) S_PASSGO='止まらない' ;; esac
+    case "$S_JUMP" in False) : ;; *) S_JUMP=True ;; esac
+    case "$S_ASKME" in False) : ;; *) S_ASKME=True ;; esac
+    case "$S_MAPCHARS" in '拡張'|'基本') : ;; *) S_MAPCHARS='拡張' ;; esac
+    case "$S_COMMANDS" in '5.4風'|'DOS 1.48風') : ;; *) S_COMMANDS='5.4風' ;; esac
+    [ -n "$S_MACRO" ] || S_MACRO=v
+}
+# Read all version settings through the same schema used when saving.
+# 3.6 and 5.2 have mode-dependent defaults that the GUI reapplies on load.
+load_game_settings() {
+    setup_game || return 1
+    S_MODE=$(read_game_setting mode)
+    S_LANGUAGE=$(read_game_setting language)
+    S_COLOR=$(read_game_setting color)
+    S_IDSCRL=$(read_game_setting idscrl)
+    S_TERSE=$(read_game_setting terse)
+    S_PASSGO=$(read_game_setting passgo)
+    S_JUMP=$(read_game_setting jump)
+    S_ASKME=$(read_game_setting askme)
+    S_MAPCHARS=$(read_game_setting mapchars)
+    S_COMMANDS=$(read_game_setting commands)
+    S_MACRO=$(read_game_setting macro)
+    normalize_game_settings
+    # Do not overwrite stored values here.
+    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ]; then
+        case "$S_MODE" in モダン|クラシック) apply_mode_preset ;; esac
+    fi
+    apply_external_gui_settings
+}
+apply_mode_preset() {
+    case "$GAME_ID:$S_MODE" in
+        54:モダン) S_COLOR=カラー; S_IDSCRL='１種類'; S_TERSE=ふつう; S_PASSGO=止まらない ;;
+        54:クラシック) S_COLOR=モノクロ; S_IDSCRL='５種類'; S_TERSE=ふつう; S_PASSGO=止まる ;;
+        clone:モダン) S_COLOR=カラー; S_PASSGO=止まらない; S_JUMP=False ;;
+        clone:クラシック) S_COLOR=モノクロ; S_PASSGO=止まる; S_JUMP=True ;;
+        dos:モダン) S_COLOR=カラー; S_MAPCHARS=拡張; S_COMMANDS='5.4風'; S_MACRO=v; S_TERSE=ふつう ;;
+        dos:クラシック) S_COLOR=カラー; S_MAPCHARS=拡張; S_COMMANDS='DOS 1.48風'; S_MACRO=v; S_TERSE=ふつう ;;
+        36:モダン) S_TERSE=ふつう; S_JUMP=False; S_ASKME=True ;;
+        36:クラシック) S_TERSE=ふつう; S_JUMP=False; S_ASKME=False ;;
+        52:モダン) S_COLOR=カラー; S_PASSGO=止まらない; S_TERSE=ふつう; S_JUMP=False; S_ASKME=True ;;
+        52:クラシック) S_COLOR=モノクロ; S_PASSGO=止まる; S_TERSE=ふつう; S_JUMP=False; S_ASKME=False ;;
+    esac
+}
+report_partial_settings() {
+    # defaults writes individual keys, not an atomic transaction. Say so
+    # explicitly rather than suggesting that a failed save rolled everything
+    # back; the caller reloads actual stored preferences where appropriate.
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '%s\n' '一部の設定だけが保存された可能性があります。' >&2
+    else
+        printf '%s\n' 'Some settings may already have been saved.' >&2
+    fi
+}
+save_game_settings() {
+    # Preserve the original complete key set and write ordering used by the
+    # AppleScript GUI. An unsuccessful write must not mark this version edited.
+    for gs_save_field in mode language color idscrl terse passgo jump askme mapchars commands macro; do
+        gs_save_key=$(game_setting_key "$gs_save_field") || return 1
+        gs_save_value=$(game_setting_value "$gs_save_field") || return 1
+        if ! write_profile_value "$gs_save_key" "$gs_save_value"; then
+            report_partial_settings
+            return 1
+        fi
+    done
+    if ! write_profile_value Savedgamemode "$S_MODE"; then
+        report_partial_settings
+        return 1
+    fi
+    if ! write_profile_value Savedmylanguage "$S_LANGUAGE"; then
+        report_partial_settings
+        return 1
+    fi
+    mark_version_edited
+    return 0
+}
+# Follow the GUI's translation rule only for built-in fruit names, and only
+# when language is actively changed in this launcher.
+sync_default_fruit_for_language() {
+    fruit=$(read_pref Savedmyfruit '')
+    if [ "$S_LANGUAGE" = English ]; then
+        case "$fruit" in ネバネバかび|こけもも) write_profile_value Savedmyfruit slime-mold || return 1 ;; esac
+    else
+        case "$fruit" in slime-mold|こけもも) write_profile_value Savedmyfruit ネバネバかび || return 1 ;; esac
+    fi
+    return 0
+}
+# Save and reflect a language change in one place, including the GUI's
+# built-in fruit translation. Other setting edits never invoke this helper.
+save_language_change() {
+    save_game_settings || return 1
+    # The language is already committed. Reflect it even if the subsequent
+    # best-effort built-in fruit translation cannot be persisted.
+    apply_ui_language "$S_LANGUAGE"
+    sync_default_fruit_for_language
+}
+# Which options can be edited for each historical version.
+fields_for_version() {
+    case "$GAME_ID" in
+        54) printf '%s' 'color idscrl terse passgo' ;;
+        clone) printf '%s' 'color passgo jump' ;;
+        dos) printf '%s' 'color mapchars commands macro terse' ;;
+        36) printf '%s' 'terse jump askme' ;;
+        52) printf '%s' 'color passgo terse askme' ;;
+    esac
+}
+field_label() {
+    case "$1" in
+        color) [ "$LANG_JA" -eq 1 ] && printf 'カラー表示' || printf 'Color' ;;
+        idscrl) [ "$LANG_JA" -eq 1 ] && printf '識別の巻物' || printf 'Identify scroll' ;;
+        terse) [ "$LANG_JA" -eq 1 ] && printf '表示の長さ' || printf 'Message length' ;;
+        passgo) [ "$LANG_JA" -eq 1 ] && printf '曲がり角' || printf 'Corners' ;;
+        jump) [ "$LANG_JA" -eq 1 ] && printf 'ジャンプ' || printf 'Jump' ;;
+        askme) [ "$LANG_JA" -eq 1 ] && printf '未識別品の確認' || printf 'Unidentified items' ;;
+        mapchars) [ "$LANG_JA" -eq 1 ] && printf 'マップ文字' || printf 'Map characters' ;;
+        commands) [ "$LANG_JA" -eq 1 ] && printf 'キー操作' || printf 'Key bindings' ;;
+        macro) [ "$LANG_JA" -eq 1 ] && printf 'マクロ' || printf 'Macro' ;;
+    esac
+}
+display_setting_value() {
+    if [ "$LANG_JA" -eq 1 ]; then printf '%s' "$1"; return 0; fi
+    case "$1" in
+        モダン) printf Modern ;; クラシック) printf Classic ;;
+        '細かく設定') printf Custom ;; カラー) printf Color ;;
+        モノクロ) printf Monochrome ;; '１種類') printf '1 kind' ;;
+        '５種類') printf '5 kinds' ;; '短くする') printf Short ;;
+        ふつう) printf Normal ;; 止まらない) printf 'Do not stop' ;;
+        止まる) printf Stop ;; 拡張) printf Extended ;;
+        基本) printf Basic ;; '5.4風') printf 'Rogue 5.4-style' ;;
+        'DOS 1.48風') printf 'DOS 1.48-style' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+# Keep the AppleScript preference values as True/False internally, but
+# present jump/askme in Japanese as 有効/無効.  Do not translate arbitrary
+# strings: a player name, fruit, or macro may legitimately be "True".
+display_field_value() {
+    case "$1:$LANG_JA:$2" in
+        jump:1:True|askme:1:True) printf '有効' ;;
+        jump:1:False|askme:1:False) printf '無効' ;;
+        *) display_setting_value "$2" ;;
+    esac
+}
+field_value() {
+    # The editing UI displays a sanitized macro; saved preferences retain
+    # their original value, so this is intentionally display-only.
+    if [ "$1" = macro ]; then
+        clean_text "$S_MACRO"
+    else
+        game_setting_value "$1"
+    fi
+}
+field_options() {
+    case "$1" in
+        color) printf '%s\n' カラー モノクロ ;;
+        idscrl) printf '%s\n' '１種類' '５種類' ;;
+        terse) printf '%s\n' ふつう 短くする ;;
+        passgo) printf '%s\n' 止まらない 止まる ;;
+        jump|askme) printf '%s\n' True False ;;
+        mapchars) printf '%s\n' 拡張 基本 ;;
+        commands) printf '%s\n' '5.4風' 'DOS 1.48風' ;;
+    esac
+}
+assign_field() {
+    case "$1" in
+        color) S_COLOR=$2 ;; idscrl) S_IDSCRL=$2 ;; terse) S_TERSE=$2 ;;
+        passgo) S_PASSGO=$2 ;; jump) S_JUMP=$2 ;; askme) S_ASKME=$2 ;;
+        mapchars) S_MAPCHARS=$2 ;; commands) S_COMMANDS=$2 ;;
+        macro) S_MACRO=$2 ;;
+    esac
+}
+edit_game_field() {
+    field=$1
+    clear_screen
+    printf '%s%s  %s%s\n' "$TITLE" "$GAME_TITLE" "$(field_label "$field")" "$RST"
+    if [ "$field" = macro ]; then
+        if [ "$LANG_JA" -eq 1 ]; then printf '\n現在の設定：%s\n' "$(clean_text "$S_MACRO")"; else printf '\nCurrent setting: %s\n' "$(clean_text "$S_MACRO")"; fi
+        read_named_text value || return 1
+        [ -n "$ANSWER" ] || return 0
+        if ! advanced_validate_text macro "$ANSWER"; then advanced_bad_text; return 0; fi
+        assign_field macro "$ANSWER"
+    else
+        if [ "$LANG_JA" -eq 1 ]; then printf '\n現在の設定：%s\n\n' "$(display_field_value "$field" "$(field_value "$field")")"; else printf '\nCurrent setting: %s\n\n' "$(display_field_value "$field" "$(field_value "$field")")"; fi
+        n=1
+        field_options "$field" | while IFS= read -r v; do
+            printf '  %s%s%s  %s\n' "$GOLD" "$n" "$RST" "$(display_field_value "$field" "$v")"
+            n=$((n+1))
+        done
+        if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '選択（空欄でキャンセル）› '; else printf '\n%s' 'Select (blank cancels) › '; fi
+        read_selection || return 1
+        case "$ANSWER" in 1|2) : ;; *) return 0 ;; esac
+        selected=$(field_options "$field" | sed -n "${ANSWER}p")
+        assign_field "$field" "$selected"
+    fi
+    S_MODE='細かく設定'
+    if ! save_game_settings; then wait_for_return || :; return 1; fi
+    return 0
+}
+choose_game_mode() {
+    clear_screen
+    menu_heading "$GAME_TITLE"
+    printf '\n'
+    printf '%s\n' '  1  モダン / Modern' '  2  クラシック / Classic' '  3  細かく設定 / Custom'
+    if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '選択（空欄でキャンセル）› '; else printf '\n%s' 'Select (blank cancels) › '; fi
+    read_selection || return 1
+    case "$ANSWER" in 1) S_MODE=モダン ;; 2) S_MODE=クラシック ;; 3) S_MODE=細かく設定 ;; *) return 0 ;; esac
+    apply_mode_preset
+    save_game_settings || return 1
+}
+choose_setting_version() {
+    clear_screen
+    list_versions
+    if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '設定するバージョン（空欄でキャンセル）› '; else printf '\n%s' 'Choose version (blank cancels) › '; fi
+    read_selection || return 1
+    [ -n "$ANSWER" ] || return 0
+    if resolve_version "$ANSWER"; then
+        load_game_settings
+        apply_ui_language "$S_LANGUAGE"
+    fi
+}
+# All ROGUEOPTS options — stage 2: game launch applies saved choices.
+# Existing AppleScript options are READ/WRITTEN through their ORIGINAL keys.
+# Additional options have new keys in the SAME com.leopard.rogue domain.
+# The former com.leopard.rogue.cui domain is never used or modified here.
+# Saved additional options affect new games; resume still uses language only.
+advanced_option_keys() {
+    case "$GAME_ID" in
+        54) printf '%s' 'color cursor seefloor terse flush jump passgo tombstone inven idscrl name fruit language file' ;;
+        clone) printf '%s' 'color cursor jump passgo noaskquit noskull name fruit language file' ;;
+        dos) printf '%s' 'color cursor extchars terse jump doskeys menu macro name fruit language file' ;;
+        36) printf '%s' 'terse flush jump step askme name fruit language file' ;;
+        52) printf '%s' 'color cursor terse flush jump step askme passgo name fruit language file' ;;
+    esac
+}
+advanced_shared_target() {
+    # A nonempty result means this option already belongs to the GUI profile.
+    # Do not create an additional state/key for it.
+    case "$1" in
+        name|fruit) printf 'profile:%s' "$1"; return ;;
+        language) printf 'language'; return ;;
+    esac
+    case "$GAME_ID:$1" in
+        54:color|clone:color|dos:color|52:color) printf 'color' ;;
+        54:idscrl) printf 'idscrl' ;;
+        54:terse|dos:terse|36:terse|52:terse) printf 'terse' ;;
+        54:passgo|clone:passgo|52:passgo) printf 'passgo' ;;
+        clone:jump|36:jump|52:jump) printf 'jump' ;;
+        36:askme|52:askme) printf 'askme' ;;
+        dos:extchars) printf 'mapchars' ;;
+        dos:doskeys) printf 'commands' ;;
+        dos:macro) printf 'macro' ;;
+        *) printf '' ;;
+    esac
+}
+advanced_option_type() {
+    case "$1" in
+        name|fruit|file|macro) printf 'text' ;;
+        language|inven|menu) printf 'choice' ;;
+        noaskquit|noskull) printf 'offonly' ;;
+        jump) [ "$GAME_ID" = clone ] && printf 'ononly' || printf 'bool' ;;
+        *) printf 'bool' ;;
+    esac
+}
+advanced_option_label() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        case "$1" in
+            color) printf 'カラー表示' ;; cursor) printf 'カーソル表示' ;;
+            seefloor) printf '照明範囲の床表示' ;; terse) printf '簡潔な表示' ;;
+            flush) printf '戦闘時の先行入力取消' ;; jump) printf '移動中の表示省略' ;;
+            passgo) printf '通路の角を自動で曲がる' ;; tombstone) printf '死亡時の墓標表示' ;;
+            inven) printf '持ち物の表示方式' ;; idscrl) printf '識別の巻物を１種類にする' ;;
+            noaskquit) printf '終了時の確認' ;; noskull) printf '死亡時の骸骨表示' ;;
+            extchars) printf '拡張文字' ;; doskeys) printf 'DOS版キー操作' ;;
+            menu) printf '持ち物メニュー' ;; macro) printf 'コマンドマクロ' ;;
+            step) printf '持ち物を１行ずつ表示' ;; askme) printf '未識別品の確認' ;;
+            name) printf 'プレイヤー名' ;; fruit) printf '好きな果物' ;;
+            language) printf '表示言語' ;; file) printf 'セーブファイル名' ;;
+        esac
+    else
+        case "$1" in
+            color) printf 'Color' ;; cursor) printf 'Cursor' ;;
+            seefloor) printf 'Lit floor' ;; terse) printf 'Terse messages' ;;
+            flush) printf 'Flush typeahead' ;; jump) printf 'Skip run frames' ;;
+            passgo) printf 'Follow corners' ;; tombstone) printf 'Tombstone' ;;
+            inven) printf 'Inventory style' ;; idscrl) printf 'One identify scroll' ;;
+            noaskquit) printf 'Quit confirmation' ;; noskull) printf 'Skull on death' ;;
+            extchars) printf 'Extended characters' ;; doskeys) printf 'DOS key bindings' ;;
+            menu) printf 'Inventory menu' ;; macro) printf 'Command macro' ;;
+            step) printf 'Step-by-step inventory' ;; askme) printf 'Ask about unidentified items' ;;
+            name) printf 'Player name' ;; fruit) printf 'Favorite fruit' ;;
+            language) printf 'Language' ;; file) printf 'Save file name' ;;
+        esac
+    fi
+}
+# The choices shown to users are concrete values.  `inherit` is an internal
+# backward-compatible storage state, rendered as the actual Homebrew-build
+# default instead of an extra "Not specified" menu entry.
+advanced_allowed_modes() {
+    case "$1" in
+        file) printf 'inherit custom' ;;
+        inven) printf 'Overwrite Slow Clear' ;;
+        menu) printf 'on sel off' ;;
+        *) printf 'on off' ;;
+    esac
+}
+advanced_default_mode() {
+    # Defaults of the standard Homebrew builds, verified against the game
+    # sources.  Saved games and an external ROGUEOPTS may have other values.
+    case "$1" in file) printf 'inherit'; return ;; esac
+    case "$GAME_ID:$1" in
+        54:cursor|54:flush|54:jump|54:terse|\
+        clone:cursor|clone:jump|\
+        dos:cursor|dos:jump|dos:terse|\
+        36:flush|36:step|36:terse|36:jump|36:askme|\
+        52:cursor|52:flush|52:step|52:terse|52:jump) printf off ;;
+        54:inven) printf Overwrite ;;
+        *) printf on ;;
+    esac
+}
+# Return the last applicable login-shell setting for an additional option.
+# Empty output means no external setting.  The same scan is used by both
+# the detailed UI and the game-environment composer.
+advanced_external_mode() {
+    ae_requested=$1
+    ae_remaining=$EXTERNAL_ROGUEOPTS
+    ae_result=''
+    while next_rogueopts_item "$ae_remaining"; do
+        ae_remaining=$ROGUEOPTS_REST
+        ae_item=$ROGUEOPTS_ITEM
+        [ -n "$ae_item" ] || continue
+        ae_key=$(external_option_key "$ae_item")
+        ae_value=$(external_option_value "$ae_item")
+        if [ "$ae_requested" = noskull ]; then
+            case "$ae_key" in noskull|notomb) ae_result=off ;; esac
+        elif [ "$ae_requested" = noaskquit ]; then
+            [ "$ae_key" != noaskquit ] || ae_result=off
+        elif [ "$ae_requested" = "$ae_key" ]; then
+            case "$ae_requested" in
+                inven)
+                    ae_normalized=$(inventory_mode_from_value "$ae_value")
+                    [ -z "$ae_normalized" ] || ae_result=$ae_normalized ;;
+                menu)
+                    case "$ae_value" in on|sel|off) ae_result=$ae_value ;; esac ;;
+                file) : ;; # Preserve the launcher's file detection policy.
+                *)
+                    if external_option_off "$ae_item"; then ae_result=off; else ae_result=on; fi ;;
+            esac
+        fi
+    done
+    printf '%s' "$ae_result"
+}
+advanced_effective_mode() {
+    adv_effective_saved=$(advanced_pref_read "$1")
+    if [ "$adv_effective_saved" = inherit ]; then
+        # Cursor visibility is already derived from the GUI's color preset.
+        # The current launcher intentionally ignores an external cursor token
+        # unless the user explicitly chooses a cursor value in All Options.
+        if [ "$1" = cursor ]; then
+            if [ "$S_COLOR" = カラー ] || { [ "$GAME_ID" = dos ] && [ "$S_MAPCHARS" = 拡張 ]; }; then
+                printf off
+            else
+                printf on
+            fi
+        else
+            adv_effective_shell=$(advanced_external_mode "$1")
+            if [ -n "$adv_effective_shell" ]; then
+                printf '%s' "$adv_effective_shell"
+            else
+                advanced_default_mode "$1"
+            fi
+        fi
+    else
+        printf '%s' "$adv_effective_saved"
+    fi
+}
+advanced_choice_label() {
+    adv_cl_opt=$1 adv_cl_mode=$2
+    if [ "$adv_cl_opt" = file ] && [ "$adv_cl_mode" = inherit ]; then
+        if [ "$LANG_JA" -eq 1 ]; then printf '標準のファイル名: %s' "$SAVE_FILE"; else printf 'Standard save file: %s' "$SAVE_FILE"; fi
+    else
+        advanced_state_label "$adv_cl_opt" "$adv_cl_mode"
+    fi
+    if [ "$(advanced_default_mode "$adv_cl_opt")" = "$adv_cl_mode" ]; then
+        if [ "$LANG_JA" -eq 1 ]; then printf '（デフォルト）'; else printf ' (default)'; fi
+    fi
+}
+advanced_valid_mode() {
+    adv_vm_candidate=$2
+    [ "$adv_vm_candidate" = inherit ] && return 0
+    for adv_vm_allowed in $(advanced_allowed_modes "$1"); do
+        [ "$adv_vm_candidate" = "$adv_vm_allowed" ] && return 0
+    done
+    return 1
+}
+advanced_key() {
+    # Namespaced by version, but not by interface. AppleScript can read these
+    # keys too if it later gains equivalent options.
+    printf '%s_rogueopt_%s' "$SETTINGS_PREFIX" "$1"
+}
+advanced_pref_read() {
+    adv_read_key=$(advanced_key "$1")
+    found=$(read_pref "$adv_read_key" inherit)
+    if advanced_valid_mode "$1" "$found"; then printf '%s' "$found"; else printf 'inherit'; fi
+}
+advanced_pref_write() {
+    # An explicit choice (including the game's default) must override the
+    # login-shell setting.  Only absent/legacy `inherit` reads from the shell.
+    write_profile_value "$(advanced_key "$1")" "$2"
+}
+advanced_text() {
+    read_pref "$(advanced_key "$1")_value" ''
+}
+advanced_state_label() {
+    adv_sl_mode=$2
+    # Use AppleScript's own expressions for options represented there by
+    # named choices rather than by generic On/Off.  Do not change the
+    # underlying option tokens or the stored preference values.
+    case "$LANG_JA:$1:$adv_sl_mode" in
+        1:color:on) printf 'カラー'; return ;; 1:color:off) printf 'モノクロ'; return ;;
+        1:idscrl:on) printf '１種類'; return ;; 1:idscrl:off) printf '５種類'; return ;;
+        1:terse:on) printf '短くする'; return ;; 1:terse:off) printf 'ふつう'; return ;;
+        1:passgo:on) printf '止まらない'; return ;; 1:passgo:off) printf '止まる'; return ;;
+        1:extchars:on) printf '拡張'; return ;; 1:extchars:off) printf '基本'; return ;;
+        1:doskeys:on) printf 'DOS 1.48風'; return ;; 1:doskeys:off) printf '5.4風'; return ;;
+        0:color:on) printf 'Color'; return ;; 0:color:off) printf 'Monochrome'; return ;;
+        0:idscrl:on) printf '1 kind'; return ;; 0:idscrl:off) printf '5 kinds'; return ;;
+        0:terse:on) printf 'Short'; return ;; 0:terse:off) printf 'Normal'; return ;;
+        0:passgo:on) printf 'Do not stop'; return ;; 0:passgo:off) printf 'Stop'; return ;;
+        0:extchars:on) printf 'Extended'; return ;; 0:extchars:off) printf 'Basic'; return ;;
+        0:doskeys:on) printf 'DOS 1.48-style'; return ;;
+        0:doskeys:off) printf 'Rogue 5.4-style'; return ;;
+    esac
+    # Other boolean options, including jump and askme, remain 有効/無効.
+    if [ "$LANG_JA" -eq 1 ]; then
+        case "$adv_sl_mode" in
+            inherit) printf '標準のファイル名' ;; on) printf '有効' ;; off) printf '無効' ;;
+            custom) printf '個別に指定' ;;
+            ja) printf '日本語' ;; en) printf '英語' ;;
+            Overwrite) printf '上書き' ;; Slow) printf '低速' ;; Clear) printf 'クリア' ;;
+            sel) printf '選択式' ;; *) printf '%s' "$adv_sl_mode" ;;
+        esac
+    else
+        case "$adv_sl_mode" in
+            inherit) printf 'Standard file name' ;; on) printf 'On' ;; off) printf 'Off' ;;
+            custom) printf 'Specified value' ;;
+            ja) printf 'Japanese' ;; en) printf 'English' ;;
+            Overwrite) printf 'Overwrite' ;; Slow) printf 'Slow' ;; Clear) printf 'Clear' ;;
+            sel) printf 'Select' ;; *) printf '%s' "$adv_sl_mode" ;;
+        esac
+    fi
+}
+advanced_shared_value() {
+    # The display is read from the same variables as the ordinary game menu.
+    adv_sv_target=$(advanced_shared_target "$1")
+    case "$adv_sv_target" in
+        profile:name) printf '%s' "$(clean_text "$PLAYER_NAME")" ;;
+        profile:fruit) printf '%s' "$(clean_text "$PLAYER_FRUIT")" ;;
+        language) printf '%s' "$S_LANGUAGE" ;;
+        color) printf '%s' "$S_COLOR" ;;
+        idscrl) printf '%s' "$S_IDSCRL" ;;
+        terse) printf '%s' "$S_TERSE" ;;
+        passgo) printf '%s' "$S_PASSGO" ;;
+        jump) if [ "$S_JUMP" = True ]; then advanced_state_label jump on; else advanced_state_label jump off; fi ;;
+        askme) if [ "$S_ASKME" = True ]; then advanced_state_label askme on; else advanced_state_label askme off; fi ;;
+        mapchars) printf '%s' "$S_MAPCHARS" ;;
+        commands) printf '%s' "$S_COMMANDS" ;;
+        macro) printf '%s' "$(clean_text "$S_MACRO")" ;;
+    esac
+}
+advanced_validate_text() {
+    adv_vt_option=$1 adv_vt_input=$2
+    valid_profile_value "$adv_vt_input" || return 1
+    [ "$(clean_text "$adv_vt_input")" = "$adv_vt_input" ] || return 1
+    case "$adv_vt_option" in
+        name) adv_vt_max=128 ;; fruit) adv_vt_max=256 ;;
+        macro) adv_vt_max=40 ;; file) adv_vt_max=1023 ;;
+        *) return 1 ;;
+    esac
+    adv_vt_bytes=$(printf '%s' "$adv_vt_input" | LC_ALL=C wc -c | tr -d ' ')
+    [ "$adv_vt_bytes" -le "$adv_vt_max" ] || return 1
+    # DOS Tribute skips the `x` macro trigger to prevent recursion.
+    if [ "$adv_vt_option" = macro ]; then
+        case "$adv_vt_input" in *x*) return 1 ;; esac
+    fi
+    if command -v iconv >/dev/null 2>&1; then
+        printf '%s' "$adv_vt_input" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1 || return 1
+    fi
+    return 0
+}
+advanced_bad_text() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '%s\n' '無効な入力です。空欄・カンマ・制御文字・不正なUTF-8・長すぎる値は保存できません。'
+    else
+        printf '%s\n' 'Invalid input: empty, comma, control chars, invalid UTF-8, or too long.'
+    fi
+    wait_for_return || :
+}
+advanced_edit_shared() {
+    adv_es_opt=$1
+    adv_es_target=$(advanced_shared_target "$adv_es_opt")
+    clear_screen
+    printf '%s%s — %s (%s)%s\n\n' "$TITLE" "$GAME_TITLE" "$(advanced_option_label "$adv_es_opt")" "$adv_es_opt" "$RST"
+    menu_advanced_current "$(display_setting_value "$(advanced_shared_value "$adv_es_opt")")"
+    case "$adv_es_target" in
+        profile:*|macro)
+            read_named_text value || return 1
+            [ -n "$ANSWER" ] || return 0
+            if ! advanced_validate_text "$adv_es_opt" "$ANSWER"; then advanced_bad_text; return 0; fi
+            case "$adv_es_target" in
+                profile:name) write_profile_value Savedmyname "$ANSWER" || return 1 ;;
+                profile:fruit) write_profile_value Savedmyfruit "$ANSWER" || return 1 ;;
+                macro) S_MACRO=$ANSWER; S_MODE='細かく設定'; save_game_settings || return 1 ;;
+            esac
+            return 0 ;;
+        language) adv_es_choices='ja en' ;;
+        *) adv_es_choices='on off' ;;
+    esac
+    adv_es_i=1
+    for adv_es_choice in $adv_es_choices; do
+        menu_numbered_choice "$adv_es_i" "$(advanced_choice_label "$adv_es_opt" "$adv_es_choice")"
+        adv_es_i=$((adv_es_i+1))
+    done
+    if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '選択（空欄でキャンセル）› '; else printf '\n%s' 'Select (blank cancels) › '; fi
+    read_selection || return 1
+    case "$ANSWER" in 1) adv_es_chosen=$(printf '%s\n' $adv_es_choices | sed -n '1p') ;; 2) adv_es_chosen=$(printf '%s\n' $adv_es_choices | sed -n '2p') ;; *) return 0 ;; esac
+    case "$adv_es_target:$adv_es_chosen" in
+        language:ja) S_LANGUAGE='日本語' ;;
+        language:en) S_LANGUAGE=English ;;
+        color:on) S_COLOR=カラー ;; color:off) S_COLOR=モノクロ ;;
+        idscrl:on) S_IDSCRL='１種類' ;; idscrl:off) S_IDSCRL='５種類' ;;
+        terse:on) S_TERSE='短くする' ;; terse:off) S_TERSE=ふつう ;;
+        passgo:on) S_PASSGO=止まらない ;; passgo:off) S_PASSGO=止まる ;;
+        jump:on) S_JUMP=True ;; jump:off) S_JUMP=False ;;
+        askme:on) S_ASKME=True ;; askme:off) S_ASKME=False ;;
+        mapchars:on) S_MAPCHARS=拡張 ;; mapchars:off) S_MAPCHARS=基本 ;;
+        commands:on) S_COMMANDS='DOS 1.48風' ;; commands:off) S_COMMANDS='5.4風' ;;
+        *) return 1 ;;
+    esac
+    if [ "$adv_es_target" != language ]; then S_MODE='細かく設定'; fi
+    if [ "$adv_es_target" = language ]; then
+        save_language_change || return 1
+    else
+        save_game_settings || return 1
+    fi
+    return 0
+}
+advanced_edit_additional() {
+    adv_ed_option=$1
+    adv_ed_old=$(advanced_pref_read "$adv_ed_option")
+    while :; do
+        clear_screen
+        printf '%s%s — %s (%s)%s\n\n' "$TITLE" "$GAME_TITLE" "$(advanced_option_label "$adv_ed_option")" "$adv_ed_option" "$RST"
+        if [ "$adv_ed_option" = file ]; then
+            if [ "$adv_ed_old" = custom ]; then
+                adv_ed_current=$(clean_text "$(advanced_text "$adv_ed_option")")
+            else
+                adv_ed_current=$SAVE_FILE
+            fi
+            menu_advanced_current "$adv_ed_current"
+        else
+            menu_advanced_current "$(advanced_state_label "$adv_ed_option" "$(advanced_effective_mode "$adv_ed_option")")"
+        fi
+        adv_ed_num=1
+        for adv_ed_choice in $(advanced_allowed_modes "$adv_ed_option"); do
+            menu_numbered_choice "$adv_ed_num" "$(advanced_choice_label "$adv_ed_option" "$adv_ed_choice")"
+            adv_ed_num=$((adv_ed_num+1))
+        done
+        if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '番号を選択（Bで戻る）› '; else printf '\n%s' 'Choose number (B to go back) › '; fi
+        read_selection || return 1
+        case "$ANSWER" in ''|[bB]|[qQ]) return 0 ;; esac
+        adv_ed_num=1 adv_ed_selected=''
+        for adv_ed_choice in $(advanced_allowed_modes "$adv_ed_option"); do
+            if [ "$ANSWER" = "$adv_ed_num" ]; then adv_ed_selected=$adv_ed_choice; break; fi
+            adv_ed_num=$((adv_ed_num+1))
+        done
+        [ -n "$adv_ed_selected" ] || continue
+        if [ "$adv_ed_selected" = custom ]; then
+            read_named_text value || return 1
+            [ -n "$ANSWER" ] || continue
+            if ! advanced_validate_text "$adv_ed_option" "$ANSWER"; then advanced_bad_text; continue; fi
+            write_profile_value "$(advanced_key "$adv_ed_option")_value" "$ANSWER" || { wait_for_return || :; return 1; }
+        fi
+        advanced_pref_write "$adv_ed_option" "$adv_ed_selected" || { wait_for_return || :; return 1; }
+        return 0
+    done
+}
+advanced_reset() {
+    clear_screen
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '%s%s — 個別設定をリセット%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        printf '%s\n' 'このバージョンで個別に保存したオプション指定を解除します。'
+        printf '%s\n' 'プレイヤー名・果物・カラーなどの基本設定は変更しません。'
+        printf '%s\n' '解除した項目は、ログインシェルのROGUEOPTSに指定があればその値を使い、'
+        printf '%s\n' 'なければゲーム本体の初期設定を使います。'
+        printf '\n%s' 'リセットしますか？ (Y/N) › '
+    else
+        printf '%s%s — Reset individual options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        printf '%s\n' 'Remove separately saved option choices for this version.'
+        printf '%s\n' 'Player name, fruit, color and other basic settings will stay unchanged.'
+        printf '%s\n' 'For cleared options, login-shell ROGUEOPTS is used when specified;'
+        printf '%s\n' 'otherwise the game defaults apply.'
+        printf '\n%s' 'Reset? (Y/N) › '
+    fi
+    read_selection || return 1
+    case "$ANSWER" in [yY]) : ;; *) return 0 ;; esac
+    if [ -z "$DEFAULTS_CMD" ]; then
+        if [ "$LANG_JA" -eq 1 ]; then printf '%s\n' 'macOSのdefaultsコマンドが見つかりません。'; else printf '%s\n' 'macOS defaults is unavailable.'; fi
+        wait_for_return || :
+        return 1
+    fi
+    adv_rs_failed=0
+    for adv_rs_opt in $(advanced_option_keys); do
+        [ -z "$(advanced_shared_target "$adv_rs_opt")" ] || continue
+        for adv_rs_suffix in '' _value; do
+            if [ "$adv_rs_suffix" = _value ] && [ "$(advanced_option_type "$adv_rs_opt")" != text ]; then continue; fi
+            adv_rs_key=$(advanced_key "$adv_rs_opt")${adv_rs_suffix}
+            if "$DEFAULTS_CMD" read "$DEFAULTS_DOMAIN" "$adv_rs_key" >/dev/null 2>&1; then
+                "$DEFAULTS_CMD" delete "$DEFAULTS_DOMAIN" "$adv_rs_key" >/dev/null 2>&1 || adv_rs_failed=1
+            fi
+        done
+    done
+    if [ "$adv_rs_failed" -ne 0 ]; then
+        if [ "$LANG_JA" -eq 1 ]; then printf '%s\n' '一部の個別設定をリセットできませんでした。'; else printf '%s\n' 'Some individual options could not be reset.'; fi
+        wait_for_return || :
+        return 1
+    fi
+}
+show_advanced_settings() {
+    # Keep the session's edited-version state after returning to the parent menu.
+    setup_game
+    while :; do
+        load_game_settings
+        load_profile
+        clear_screen
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s%s — 全オプション%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        else
+            printf '%s%s — All options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        fi
+        adv_menu_index=1
+        for adv_menu_opt in $(advanced_option_keys); do
+            adv_menu_target=$(advanced_shared_target "$adv_menu_opt")
+            if [ -n "$adv_menu_target" ]; then
+                adv_menu_value=$(display_setting_value "$(advanced_shared_value "$adv_menu_opt")")
+                adv_menu_status=$adv_menu_value
+            else
+                adv_menu_mode=$(advanced_pref_read "$adv_menu_opt")
+                if [ "$adv_menu_mode" = custom ]; then
+                    adv_menu_status=$(clean_text "$(advanced_text "$adv_menu_opt")")
+                elif [ "$adv_menu_opt" = file ]; then
+                    adv_menu_status=$SAVE_FILE
+                else
+                    adv_menu_status=$(advanced_state_label "$adv_menu_opt" "$(advanced_effective_mode "$adv_menu_opt")")
+                fi
+            fi
+            printf '  %s%2s%s  %s (%s): %s\n' "$GOLD" "$adv_menu_index" "$RST" \
+                "$(advanced_option_label "$adv_menu_opt")" "$adv_menu_opt" "$adv_menu_status"
+            adv_menu_index=$((adv_menu_index+1))
+        done
+        printf '\n'
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '  %sR%s  個別設定をリセット\n' "$GOLD" "$RST"
+            printf '  %sB%s  ゲーム設定へ戻る\n\n' "$GOLD" "$RST"
+            printf '%s' '選択 › '
+        else
+            printf '  %sR%s  Reset individual options\n' "$GOLD" "$RST"
+            printf '  %sB%s  Back to game settings\n\n' "$GOLD" "$RST"
+            printf '%s' 'Select › '
+        fi
+        read_selection || return 0
+        case "$ANSWER" in
+            [bB]|[qQ]) return 0 ;;
+            [rR]) advanced_reset ;;
+            *)
+                adv_menu_index=1 adv_menu_selected=''
+                for adv_menu_opt in $(advanced_option_keys); do
+                    if [ "$ANSWER" = "$adv_menu_index" ]; then adv_menu_selected=$adv_menu_opt; break; fi
+                    adv_menu_index=$((adv_menu_index+1))
+                done
+                if [ -n "$adv_menu_selected" ]; then
+                    if [ -n "$(advanced_shared_target "$adv_menu_selected")" ]; then
+                        # Shared-setting failures have not yet shown a pause;
+                        # otherwise the next repaint would hide the warning.
+                        advanced_edit_shared "$adv_menu_selected" || { wait_for_return || :; }
+                    else
+                        # Additional-setting writes already pause on failure.
+                        advanced_edit_additional "$adv_menu_selected" || :
+                    fi
+                fi
+                ;;
+        esac
+    done
+}
+
+show_game_settings() {
+    load_last_version
+    GAME_ID=$LAST_ID
+    load_game_settings
+    while :; do
+        clear_screen
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%sゲーム設定 — %s%s\n' "$TITLE" "$GAME_TITLE" "$RST"
+            printf '  モード     %s\n  表示言語   %s\n\n' "$(display_setting_value "$S_MODE")" "$S_LANGUAGE"
+        else
+            printf '%sGame settings — %s%s\n' "$TITLE" "$GAME_TITLE" "$RST"
+            printf '  Mode       %s\n  Language   %s\n\n' "$(display_setting_value "$S_MODE")" "$S_LANGUAGE"
+        fi
+        fields=$(fields_for_version)
+        n=1
+        for field in $fields; do
+            label=$(field_label "$field")
+            val=$(field_value "$field")
+            printf '  %s%s%s  %s：%s\n' "$GOLD" "$n" "$RST" "$label" "$(display_field_value "$field" "$val")"
+            n=$((n+1))
+        done
+        printf '\n'
+        menu_key_choice M "$(if [ "$LANG_JA" -eq 1 ]; then printf 'モードを変更'; else printf 'Change mode'; fi)"
+        menu_key_choice L "$(if [ "$LANG_JA" -eq 1 ]; then printf '表示言語を変更'; else printf 'Change language'; fi)"
+        menu_key_choice A "$(if [ "$LANG_JA" -eq 1 ]; then printf '全オプションを設定'; else printf 'All options'; fi)"
+        menu_key_choice V "$(if [ "$LANG_JA" -eq 1 ]; then printf 'バージョンを変更'; else printf 'Choose version'; fi)"
+        menu_key_choice B "$(if [ "$LANG_JA" -eq 1 ]; then printf 'メインメニューへ戻る'; else printf 'Back to menu'; fi)"
+        printf '\n'
+        if [ "$LANG_JA" -eq 1 ]; then label='選択'; else label='Select'; fi
+        printf '%s%s › %s' "$TITLE" "$label" "$TEXT"
+        read_selection || return 0
+        case "$ANSWER" in
+            [bB]|[qQ]) return 0 ;;
+            [mM])
+                if ! choose_game_mode; then
+                    wait_for_return || :
+                    load_game_settings
+                fi ;;
+            [lL])
+                if [ "$S_LANGUAGE" = English ]; then S_LANGUAGE='日本語'; else S_LANGUAGE=English; fi
+                if ! save_language_change; then
+                    wait_for_return || :
+                    load_game_settings
+                    apply_ui_language "$S_LANGUAGE"
+                fi
+                ;;
+            [aA]) show_advanced_settings || :; load_game_settings; apply_ui_language "$S_LANGUAGE" ;;
+            [vV]) choose_setting_version || : ;;
+            [1-9])
+                n=1; chosen=''
+                for field in $fields; do
+                    if [ "$ANSWER" = "$n" ]; then chosen=$field; break; fi
+                    n=$((n+1))
+                done
+                [ -z "$chosen" ] || edit_game_field "$chosen" || :
+                ;;
+        esac
+    done
+}
+
+# The saved values are shared with the GUI. A missing player name falls back
+# to the macOS full name, but merely reading it does not overwrite GUI settings.
+system_player_name() {
+    full_name=$(id -F 2>/dev/null || :)
+    if [ -n "$full_name" ]; then
+        printf '%s' "$full_name"
+    else
+        id -un 2>/dev/null || printf '%s' 'player'
+    fi
+}
+
+load_profile() {
+    # Read the GUI's profile through the same fallback helper used by
+    # version settings. Reading never writes implicit defaults to the store.
+    saved_name=$(read_pref Savedmyname '')
+    saved_fruit=$(read_pref Savedmyfruit '')
+    if [ -n "$saved_name" ]; then
+        PLAYER_NAME=$saved_name
+    else
+        PLAYER_NAME=$(system_player_name)
+    fi
+    if [ -n "$saved_fruit" ]; then
+        PLAYER_FRUIT=$saved_fruit
+    elif [ "$LANG_JA" -eq 1 ]; then
+        PLAYER_FRUIT='ネバネバかび'
+    else
+        PLAYER_FRUIT='slime-mold'
+    fi
+    # GUI startup also reads name/fruit from the login shell once.  Keep the
+    # user's subsequent menu edits authoritative for this launcher session.
+    if [ "$PROFILE_EDITED" -eq 0 ]; then
+        ex_p_remaining=$EXTERNAL_INITIAL_ROGUEOPTS
+        while next_rogueopts_item "$ex_p_remaining"; do
+            ex_p_remaining=$ROGUEOPTS_REST
+            ex_p_item=$ROGUEOPTS_ITEM
+            ex_p_key=$(external_option_key "$ex_p_item")
+            ex_p_value=$(external_option_value "$ex_p_item")
+            case "$ex_p_key" in
+                name) if [ -n "$ex_p_value" ] && valid_profile_value "$ex_p_value"; then PLAYER_NAME=$ex_p_value; fi ;;
+                fruit) if [ -n "$ex_p_value" ] && valid_profile_value "$ex_p_value"; then PLAYER_FRUIT=$ex_p_value; fi ;;
+            esac
+        done
+    fi
+}
+
+write_profile_value() {
+    if [ -z "$DEFAULTS_CMD" ]; then
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s\n' 'macOSのdefaultsコマンドが見つかりません。' >&2
+        else
+            printf '%s\n' 'The macOS defaults command was not found.' >&2
+        fi
+        return 1
+    fi
+    if ! "$DEFAULTS_CMD" write "$DEFAULTS_DOMAIN" "$1" -string "$2"; then
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s\n' '共有設定の保存に失敗しました。' >&2
+        else
+            printf '%s\n' 'Unable to write the shared preferences.' >&2
+        fi
+        return 1
+    fi
+    case "$1" in Savedmyname|Savedmyfruit) PROFILE_EDITED=1 ;; esac
+    return 0
+}
+
+# ROGUEOPTS is comma-delimited in all five games. Reject commas and line
+# breaks in newly entered values instead of writing settings the games cannot
+# interpret. Older GUI values are never changed implicitly.
+valid_profile_value() {
+    case "$1" in
+        ''|*,*|*'
+'*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+profile_error() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '%s\n' '空欄・カンマ・改行を含む設定は使用できません。'
+    else
+        printf '%s\n' 'The value must be nonempty and contain no commas or newlines.'
+    fi
+}
+
+show_profile_menu() {
+    while :; do
+        load_profile
+        clear_screen
+        if [ "$LANG_JA" -eq 1 ]; then
+            menu_heading 'プレイヤー情報の設定'
+            printf '%s\n' '──────────────────────────────────────'
+            printf 'プレイヤー名：%s\n好きな果物：%s\n\n' "$(clean_text "$PLAYER_NAME")" "$(clean_text "$PLAYER_FRUIT")"
+            printf '%s\n' '1. プレイヤー名を変更' '2. 好きな果物を変更' \
+                '3. プレイヤー名を初期値に戻す' '4. 好きな果物を初期値に戻す' '' \
+                'B. メインメニューに戻る'
+            printf '\n%s' '選択: '
+        else
+            menu_heading 'Player settings'
+            printf '%s\n' '──────────────────────────────────────'
+            printf 'Player name: %s\nFavorite fruit: %s\n\n' "$(clean_text "$PLAYER_NAME")" "$(clean_text "$PLAYER_FRUIT")"
+            printf '%s\n' '1. Change player name' '2. Change favorite fruit' \
+                '3. Reset player name' '4. Reset favorite fruit' '' \
+                'B. Back to main menu'
+            printf '\n%s' 'Select: '
+        fi
+        read_selection || return 0
+        case "$ANSWER" in
+            1|2)
+                which=$ANSWER
+                if [ "$which" = 1 ]; then
+                    read_named_text name || return 0
+                else
+                    read_named_text fruit || return 0
+                fi
+                [ -n "$ANSWER" ] || continue
+                if ! valid_profile_value "$ANSWER"; then
+                    profile_error
+                    wait_for_return || return 0
+                    continue
+                fi
+                if [ "$which" = 1 ]; then
+                    write_profile_value Savedmyname "$ANSWER" || wait_for_return || return 0
+                else
+                    write_profile_value Savedmyfruit "$ANSWER" || wait_for_return || return 0
+                fi
+                ;;
+            3)
+                reset_name=$(system_player_name)
+                write_profile_value Savedmyname "$reset_name" || wait_for_return || return 0
+                ;;
+            4)
+                if [ "$LANG_JA" -eq 1 ]; then
+                    reset_fruit='ネバネバかび'
+                else
+                    reset_fruit='slime-mold'
+                fi
+                write_profile_value Savedmyfruit "$reset_fruit" || wait_for_return || return 0
+                ;;
+            [bB]|[qQ]) return 0 ;;
+        esac
+    done
+}
+
+# Draw all version entries from setup_game(), the authoritative metadata map.
+# Run in a subshell so the display never changes the caller's GAME_ID, paths,
+# or settings prefix. The guide menu never reads save preferences.
+version_title_for() (
+    GAME_ID=$1
+    setup_game || exit 1
+    printf '%s' "$GAME_TITLE"
+)
+show_version_entries() (
+    entry_mode=$1
+    idx=1
+    for id in 54 clone dos 36 52; do
+        GAME_ID=$id
+        setup_game || exit 1
+        version=$GAME_TITLE
+        status=''
+        if [ "$entry_mode" = saves ]; then
+            # Use the same custom file= preference as the actual launch path.
+            configured_save_file
+            savepath=$(configured_save_path)
+            if [ -f "$savepath" ]; then
+                if [ "$LANG_JA" -eq 1 ]; then status='セーブあり'; else status='Saved'; fi
+            fi
+        fi
+        version_color=$TEXT
+        if [ "$id" = "$LAST_ID" ]; then
+            # Only the version name is highlighted, not the save status.
+            version_color=$DIM
+        fi
+        printf '  %s%2s%s  %s%-21s%s' "$GOLD" "$idx" "$RST" "$version_color" "$version" "$RST"
+        [ -z "$status" ] || printf ' %s%s%s' "$SAVE_COLOR" "$status" "$RST"
+        printf '\n'
+        idx=$((idx+1))
+    done
+)
+
+show_main_menu() {
+    load_last_version
+    load_ui_language
+    LAST_TITLE=$(version_title_for "$LAST_ID")
+    load_profile
+    clear_screen
+    printf '%s╭' "$GOLD"; line52; printf '╮%s\n' "$RST"
+    printf '%s│%19s%-33s│%s\n' "$GOLD" '' 'Rogue for macOS' "$RST"
+    printf '%s╰' "$GOLD"; line52; printf '╯%s\n' "$RST"
+    player=$(clean_text "$PLAYER_NAME")
+    fruit=$(clean_text "$PLAYER_FRUIT")
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '\n  %sやあ、%s。運命の洞窟へようこそ・・・%s\n' "$TEXT" "$player" "$RST"
+        printf '\n%s   好きな果物:%s %s%s\n' "$DIM" "$TEXT" "$fruit" "$RST"
+    else
+        printf '\n  %sHello, %s. Welcome to the Dungeons of Doom...%s\n' "$TEXT" "$player" "$RST"
+        printf '\n%s   Favorite fruit:%s %s%s\n' "$DIM" "$TEXT" "$fruit" "$RST"
+    fi
+    printf '\n%s' "$DIM"; line52; printf '%s\n\n' "$RST"
+    show_version_entries saves
+    printf '\n%s' "$DIM"; line52; printf '%s\n' "$RST"
+    if [ "$LANG_JA" -eq 1 ]; then
+        # G and Q share the same column; the first Japanese line is 52 cells wide.
+        printf '   %sP%s  プレイヤー情報     %sG%s  【運命の洞窟】への案内書\n' "$GOLD" "$TEXT" "$GOLD" "$TEXT"
+        printf '   %sS%s  ゲーム設定         %sQ%s  終了\n\n' "$GOLD" "$TEXT" "$GOLD" "$TEXT"
+        printf '  %sReturn：前回選択した %s を起動%s\n' "$DIM" "$LAST_TITLE" "$RST"
+        printf '  %s冒険したいバージョンまたは操作を選ぶ › %s' "$TITLE" "$TEXT"
+    else
+        printf '   %sP%s  Player settings    %sG%s  Guidebook\n' "$GOLD" "$TEXT" "$GOLD" "$TEXT"
+        printf '   %sS%s  Game settings      %sQ%s  Quit\n\n' "$GOLD" "$TEXT" "$GOLD" "$TEXT"
+        printf '  %sReturn: launch previously selected %s%s\n' "$DIM" "$LAST_TITLE" "$RST"
+        printf '  %sChoose a version or action › %s' "$TITLE" "$TEXT"
+    fi
+}
+
+# Use exactly the same version-specific URLs as the AppleScript GUI.
+# No user input is interpolated into the URL.
+guide_url_for_version() {
+    case "$1" in
+        54)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=54' ;;
+        clone) printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=clone3' ;;
+        dos)   printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=dos148' ;;
+        36)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=36' ;;
+        52)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=52' ;;
+        *) return 1 ;;
+    esac
+}
+
+show_guide_menu() {
+    while :; do
+        # Follow the GUI's last selection but never change it by viewing guides.
+        load_last_version
+        load_ui_language
+        LAST_TITLE=$(version_title_for "$LAST_ID")
+        clear_screen
+        if [ "$LANG_JA" -eq 1 ]; then
+            menu_heading '【運命の洞窟】への案内書'
+        else
+            menu_heading 'A Guide to the Dungeons of Doom'
+        fi
+        printf '%s' "$DIM"; line52; printf '%s\n\n' "$RST"
+        show_version_entries guides
+        printf '\n  %sB%s  %s\n\n' "$GOLD" "$RST" "$(if [ "$LANG_JA" -eq 1 ]; then printf 'メインメニューへ戻る'; else printf 'Back to main menu'; fi)"
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '  %sReturn：%sの案内書を開く%s\n' "$DIM" "$LAST_TITLE" "$RST"
+            printf '  %s案内書を選ぶ › %s' "$TITLE" "$TEXT"
+        else
+            printf '  %sReturn: open guide for %s%s\n' "$DIM" "$LAST_TITLE" "$RST"
+            printf '  %sChoose a guide › %s' "$TITLE" "$TEXT"
+        fi
+        read_selection || return 0
+        case "$ANSWER" in
+            [bB]|[qQ]) return 0 ;;
+            '') guide_id=$LAST_ID ;;
+            1|2|3|4|5)
+                if ! resolve_version "$ANSWER"; then continue; fi
+                guide_id=$GAME_ID ;;
+            *) continue ;;
+        esac
+        url=$(guide_url_for_version "$guide_id") || continue
+        # macOS's `open` invokes the default browser; leave the launcher running.
+        # On failure, report the error and keep the guide menu available.
+        if command -v open >/dev/null 2>&1 && open "$url"; then
+            return 0
+        fi
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '\n%s\n' '案内書を開けませんでした。macOSのブラウザ設定をご確認ください。'
+        else
+            printf '\n%s\n' 'Could not open the guide. Check your macOS browser settings.'
+        fi
+        wait_for_return || return 0
+    done
+}
+
+missing_game() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '\n%s はインストールされていません。\n' "$GAME_TITLE"
+        printf 'インストール: brew install %s\n' "$GAME_BIN"
+    else
+        printf '\n%s is not installed.\n' "$GAME_TITLE"
+        printf 'Install it with: brew install %s\n' "$GAME_BIN"
+    fi
+    wait_for_return
+}
+
+wait_for_return() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf '\n%s' 'リターンを押してください: '
+    else
+        printf '\n%s' 'Press Return to continue: '
+    fi
+    read_selection || return 1
+}
+
+choose_saved_game() {
+    # Sets START_MODE and START_PATH without changing any saved file.
+    # Return 1 to go back to the version menu.
+    START_MODE=new
+    START_PATH=
+    if [ ! -f "$(configured_save_path)" ]; then
+        return 0
+    fi
+    while :; do
+        clear_screen
+        printf '%s\n' "$GAME_TITLE"
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s\n' '保存した冒険が見つかりました。' "$SAVE_FILE" ''
+            printf '%s\n' 'R / Enter  セーブから再開' 'N          新しい冒険を始める' \
+                'F          別のセーブファイルを指定' 'Q          バージョン選択に戻る'
+            printf '\n%s' '選択: '
+        else
+            printf '%s\n' 'Saved game found:' "$SAVE_FILE" ''
+            printf '%s\n' 'R / Enter  Resume saved game' 'N          New adventure' \
+                'F          Choose another saved file' 'Q          Back to version menu'
+            printf '\n%s' 'Select: '
+        fi
+        read_selection || return 1
+        case "$ANSWER" in
+            ''|[rR]) START_MODE=resume; START_PATH=$(configured_save_path); return 0 ;;
+            [nN]) START_MODE=new; START_PATH=; return 0 ;;
+            [fF]) choose_another_file && return 0 ;;
+            [qQ]) return 1 ;;
+            *) : ;;
+        esac
+    done
+}
+
+choose_another_file() {
+    printf '\n'
+    read_named_text path || return 1
+    [ -n "$ANSWER" ] || return 1
+    case "$ANSWER" in
+        '~')       path=$HOME ;;
+        '~/'*)     path=$HOME/${ANSWER#'~/'} ;;
+        /*)        path=$ANSWER ;;
+        *)         path=$GAME_DIR/$ANSWER ;;
+    esac
+    if [ ! -f "$path" ]; then
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf 'ファイルが見つかりません: %s\n' "$path"
+        else
+            printf 'File not found: %s\n' "$path"
+        fi
+        wait_for_return || return 1
+        return 1
+    fi
+    START_MODE=resume
+    START_PATH=$path
+    return 0
+}
+
+# Compose new-game-only options without executing or evaluating profile text.
+# When creating a new game, GUI settings replace the keys they control.
+# Other inherited ROGUEOPTS keys are passed through unchanged.
+append_game_option() {
+    [ -n "$1" ] || return 0
+    if [ -z "$GAME_ROGUEOPTS" ]; then
+        GAME_ROGUEOPTS=$1
+    else
+        GAME_ROGUEOPTS=$GAME_ROGUEOPTS,$1
+    fi
+}
+
+without_profile_options() {
+    # Keep the caller's leading language= token so that localized option
+    # values (notably 5.4 inven=) are interpreted in the correct language.
+    remaining=$EXTERNAL_ROGUEOPTS
+    while next_rogueopts_item "$remaining"; do
+        remaining=$ROGUEOPTS_REST
+        item=$ROGUEOPTS_ITEM
+        [ -n "$item" ] || continue
+        case "$item" in *'
+'*|*'
+'*) continue ;; esac
+        opt=$(external_option_key "$item")
+        # `file` would disagree with the standard saved-game detection.
+        case "$opt" in file|name|fruit|language) continue ;; esac
+        # The GUI supplies these values; do not send contradictory tokens.
+        [ -z "$(advanced_shared_target "$opt")" ] || continue
+        # A user's explicit detailed-menu selection overrides the login shell.
+        case "$GAME_ID:$opt" in
+            clone:noskull|clone:notomb) extra_override=$(advanced_pref_read noskull) ;;
+            *) extra_override=$(advanced_pref_read "$opt") ;;
+        esac
+        [ "$extra_override" = inherit ] || continue
+        case "$GAME_ID:$opt" in
+            54:cursor|clone:cursor|dos:cursor|52:cursor|52:jump) continue ;;
+            54:inven)
+                # 5.4's parser matches `inven=` against the *localized*
+                # inventory-style names.  A user's external ROGUEOPTS may
+                # use English names while the game is launched in Japanese
+                # (or vice versa).  Normalize known values to the selected
+                # language; keep an unrecognized value intact for the game.
+                ext_inv_mode=$(inventory_mode_from_value "$(external_option_value "$item")")
+                if [ -n "$ext_inv_mode" ]; then
+                    append_game_option "inven=$(inventory_mode_for_game "$ext_inv_mode")"
+                    continue
+                fi ;;
+        esac
+        append_game_option "$item"
+    done
+}
+
+# Append only explicitly selected extra settings; the unchanged external
+# options (when no choice is saved) were already included by the caller.
+# Keep the game's original parser grammar, including Clone III one-way flags.
+append_additional_game_options() {
+    for add_opt in $(advanced_option_keys); do
+        [ -z "$(advanced_shared_target "$add_opt")" ] || continue
+        add_state=$(advanced_pref_read "$add_opt")
+        [ "$add_state" != inherit ] || continue
+        case "$add_opt:$add_state" in
+            file:custom)
+                add_value=$(advanced_text file)
+                if advanced_validate_text file "$add_value"; then
+                    append_game_option "file=$add_value"
+                fi ;;
+            file:*) : ;;
+            inven:Overwrite|inven:Slow|inven:Clear)
+                append_game_option "inven=$(inventory_mode_for_game "$add_state")" ;;
+            menu:on|menu:sel|menu:off) append_game_option "menu=$add_state" ;;
+            noaskquit:off) append_game_option noaskquit ;;
+            noskull:off) append_game_option noskull ;;
+            noaskquit:on|noskull:on) : ;;
+            jump:off)
+                # Clone III does not recognize `nojump`, so for that version
+                # removing any external `jump` leaves modern build's default.
+                if [ "$GAME_ID" != clone ]; then append_game_option nojump; fi ;;
+            *:on) append_game_option "$add_opt" ;;
+            *:off) append_game_option "no$add_opt" ;;
+        esac
+    done
+}
+
+# Reuse the same configured path for saved-game detection and the file= token.
+# The path is never evaluated as shell code, and only explicitly stored
+# choices affect it (external file= remains excluded as before).
+configured_save_file() {
+    save_mode=$(advanced_pref_read file)
+    [ "$save_mode" = custom ] || return 0
+    save_value=$(advanced_text file)
+    advanced_validate_text file "$save_value" || return 0
+    case "$save_value" in
+        '~/'*) SAVE_FILE=$HOME/${save_value#'~/'} ;;
+        /*) SAVE_FILE=$save_value ;;
+        *) SAVE_FILE=$save_value ;;
+    esac
+}
+configured_save_path() {
+    case "$SAVE_FILE" in
+        /*) printf '%s' "$SAVE_FILE" ;;
+        *) printf '%s/%s' "$GAME_DIR" "$SAVE_FILE" ;;
+    esac
+}
+
+new_game_options() {
+    load_game_settings
+    # Fruit fallback follows the selected game's language, not the language
+    # of the main menu (which may show a different last-played version).
+    apply_ui_language "$S_LANGUAGE"
+    load_profile
+    GAME_ROGUEOPTS=''
+    # The 5.4 inventory styles are localized.  Set language before reading
+    # externally specified inventory styles or composing launcher settings.
+    if [ "$S_LANGUAGE" = English ]; then append_game_option language=en; else append_game_option language=ja; fi
+    without_profile_options
+    case "$S_COLOR" in
+        カラー) display_color='color,nocursor' ;;
+        *) if [ "$GAME_ID" = dos ] && [ "$S_MAPCHARS" = 拡張 ]; then
+            display_color='nocolor,nocursor'
+           else display_color='nocolor,cursor'; fi ;;
+    esac
+    case "$S_TERSE" in 短くする) terse_opt=terse ;; *) terse_opt=noterse ;; esac
+    case "$S_PASSGO" in 止まらない) passgo_opt=passgo ;; *) passgo_opt=nopassgo ;; esac
+    case "$S_IDSCRL" in '１種類') idscrl_opt=idscrl ;; *) idscrl_opt=noidscrl ;; esac
+    case "$S_MAPCHARS" in 拡張) map_opt=extchars ;; *) map_opt=noextchars ;; esac
+    case "$GAME_ID" in
+        54)
+            append_game_option "$display_color"
+            append_game_option "$idscrl_opt"
+            append_game_option "$terse_opt"
+            append_game_option "$passgo_opt" ;;
+        clone)
+            append_game_option "$display_color"
+            append_game_option "$passgo_opt"
+            [ "$S_JUMP" != True ] || append_game_option jump ;;
+        dos)
+            append_game_option "$display_color"
+            append_game_option "$map_opt"
+            [ "$S_COMMANDS" != '5.4風' ] || append_game_option nodoskeys
+            if advanced_validate_text macro "$S_MACRO"; then append_game_option "macro=$S_MACRO"; else append_game_option 'macro=v'; fi
+            append_game_option "$terse_opt" ;;
+        36)
+            [ "$S_JUMP" != True ] || append_game_option jump
+            if [ "$S_ASKME" = True ]; then append_game_option askme; else append_game_option noaskme; fi
+            append_game_option "$terse_opt" ;;
+        52)
+            append_game_option "$display_color"
+            if [ "$S_JUMP" = True ]; then append_game_option jump; else append_game_option nojump; fi
+            append_game_option "$passgo_opt"
+            if [ "$S_ASKME" = True ]; then append_game_option askme; else append_game_option noaskme; fi
+            append_game_option "$terse_opt" ;;
+    esac
+    append_additional_game_options
+    if valid_profile_value "$PLAYER_FRUIT"; then append_game_option "fruit=$PLAYER_FRUIT"; fi
+    if valid_profile_value "$PLAYER_NAME"; then append_game_option "name=$PLAYER_NAME"; fi
+}
+
+# Keep the three launch modes in one place.  Only this subshell changes cwd
+# or exports game-specific ROGUEOPTS, so nothing leaks into the launcher menu.
+# Explicit arguments are never rewritten; resuming passes exactly the path
+# selected by the user; a new game receives no positional arguments.
+launch_game_process() (
+    cd "$GAME_DIR" || exit 1
+    if [ "$#" -gt 0 ]; then
+        ROGUEOPTS=$EXTERNAL_ROGUEOPTS
+    elif [ "$START_MODE" = resume ]; then
+        # The saved character's name and fruit must not be replaced.
+        load_game_settings
+        GAME_ROGUEOPTS=''
+        if [ "$S_LANGUAGE" = English ]; then append_game_option language=en; else append_game_option language=ja; fi
+        ROGUEOPTS=$GAME_ROGUEOPTS
+        set -- "$START_PATH"
+    else
+        # New adventures use the GUI-shared profile and additional options.
+        new_game_options
+        ROGUEOPTS=$GAME_ROGUEOPTS
+    fi
+    export ROGUEOPTS
+    "$GAME_BIN" "$@"
+)
+
+report_directory_error() {
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf 'ゲーム用ディレクトリを利用できません: %s\n' "$GAME_DIR" >&2
+    else
+        printf 'Unable to access game directory: %s\n' "$GAME_DIR" >&2
+    fi
+}
+# Both the pre-save chooser and the actual launch validate the directory:
+# the second check also catches changes that occur after save selection.
+ensure_game_directory() {
+    if ! mkdir -p "$GAME_DIR" || ! (cd "$GAME_DIR") 2>/dev/null; then
+        report_directory_error
+        wait_for_return || :
+        return 1
+    fi
+    return 0
+}
+# Return 3 only if no game was started (not a Rogue process exit code).
+run_selected_game() {
+    ensure_game_directory || return 3
+    if ! command -v "$GAME_BIN" >/dev/null 2>&1; then
+        missing_game || :
+        return 3
+    fi
+    # Refresh the login-shell environment immediately before each launch.
+    EXTERNAL_ROGUEOPTS=$(read_external_rogueopts)
+    clear_terminal_screen
+    launch_game_process "$@"
+    result=$?
+    if [ "$result" -ne 0 ]; then
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '\nゲームが終了しました（終了コード: %s）。\n' "$result"
+        else
+            printf '\nGame exited with status %s.\n' "$result"
+        fi
+    fi
+    # Keep the post-score-screen pause for 3.6 and 5.2.
+    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ]; then
+        if [ -t 1 ]; then
+            printf '\033[24;1H\033[2K'
+        fi
+        wait_for_return || return 1
+    fi
+    return 0
+}
+
+post_game_menu() {
+    while :; do
+        # Remove Rogue's last curses colors and draw the black menu surface.
+        clear_screen
+        printf '\n'
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s\n' 'もう一度遊びますか？' \
+                '  Y. 同じバージョンでもう一度' \
+                '  M. バージョン選択に戻る' \
+                '  N. 終了'
+            printf '%s' '選択: '
+        else
+            printf '%s\n' 'Play again?' \
+                '  Y. Same version again' \
+                '  M. Version menu' \
+                '  N. Quit'
+            printf '%s' 'Select: '
+        fi
+        read_selection || return 2
+        case "$ANSWER" in
+            [yY]) return 0 ;;
+            [mM]) return 1 ;;
+            [nN]|[qQ]) return 2 ;;
+        esac
+    done
+}
+
+# A normal launch always rechecks the configured save on every new round;
+# explicit CLI arguments bypass this chooser for the first round only.
+prepare_interactive_launch() {
+    ensure_game_directory || return 1
+    configured_save_file
+    choose_saved_game
+}
+
+play_version() {
+    setup_game || return 1
+    if [ ! -t 0 ]; then
+        # Avoid launching an interactive curses game from a pipe.
+        if [ "$LANG_JA" -eq 1 ]; then
+            printf '%s\n' '対話式ランチャーにはターミナルが必要です。' >&2
+        else
+            printf '%s\n' 'An interactive terminal is required.' >&2
+        fi
+        return 2
+    fi
+    if ! command -v "$GAME_BIN" >/dev/null 2>&1; then
+        missing_game || :
+        return 1
+    fi
+    if ! remember_version; then
+        # Do not lose the persistent-write warning on the next repaint.
+        wait_for_return || :
+        return 1
+    fi
+    launch_with_args=0
+    [ "$#" -eq 0 ] || launch_with_args=1
+    while :; do
+        if [ "$launch_with_args" -eq 1 ]; then
+            START_MODE=new
+            START_PATH=
+            run_selected_game "$@"
+            run_status=$?
+            [ "$run_status" -ne 3 ] || return 1
+            # Y after this round must use the ordinary saved-game chooser.
+            launch_with_args=0
+            set --
+        else
+            prepare_interactive_launch || return 1
+            run_selected_game
+            run_status=$?
+            [ "$run_status" -ne 3 ] || return 1
+        fi
+        post_game_menu
+        case "$?" in
+            0) : ;; # Y: recheck the selected version's saved game
+            1) return 1 ;; # M: version menu
+            2) return 2 ;; # N: quit
+        esac
+    done
+}
+
+# Match the AppleScript GUI's goodbyeMessage() in both languages.
+goodbye_message() {
+    # Restore the Terminal profile and clear before displaying the farewell.
+    clear_terminal_screen
+    if [ "$LANG_JA" -eq 1 ]; then
+        printf 'それでは、またね。\n'
+    else
+        printf 'See you again.\n'
+    fi
+}
+
+# The main menu has one dispatcher for both Return and a numbered choice.
+# Return status 2 requests a farewell; every other result redraws the menu.
+# Child menus do not change the main-menu exit policy.
+handle_main_selection() {
+    case "$1" in
+        [qQ]) return 2 ;;
+        [pP]) show_profile_menu; return 0 ;;
+        [sS]) show_game_settings; return 0 ;;
+        [gG]) show_guide_menu; return 0 ;;
+        '') GAME_ID=$LAST_ID ;;
+        *) resolve_version "$1" || return 0 ;;
+    esac
+    play_version
+    case "$?" in
+        2) return 2 ;;
+        *) return 0 ;;
+    esac
+}
+
+# Both CLI launch and the menu dispatcher enter the same play_version loop;
+# its result distinguishes return-to-menu from quit without persistent flags.
+main() {
+    case "${1:-}" in
+        --help|-h) usage; return 0 ;;
+        --version) printf 'rogue-mac %s\n' "$VERSION"; return 0 ;;
+        --show-rogueopts)
+            check_opts=$(read_external_rogueopts)
+            if [ -n "$check_opts" ]; then
+                printf 'Login-shell ROGUEOPTS: %s\n' "$check_opts"
+            else
+                printf '%s\n' 'Login-shell ROGUEOPTS: (not set or could not be retrieved)'
+            fi
+            return 0 ;;
+        --list) list_versions; return 0 ;;
+        --mono) UI_MONO=1; shift ;;
+    esac
+    init_colors
+    EXTERNAL_INITIAL_ROGUEOPTS=$(read_external_rogueopts)
+    EXTERNAL_ROGUEOPTS=$EXTERNAL_INITIAL_ROGUEOPTS
+    # SIGINT is normally delivered to both the interactive shell and its
+    # foreground child. Always restore colors/remove a pending input file;
+    # do not show the normal farewell or restart the menu after a signal.
+    trap 'cleanup_launcher' 0
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 131' QUIT
+    trap 'exit 143' TERM
+    if [ "$#" -gt 0 ]; then
+        if ! resolve_version "$1"; then
+            printf 'Unknown Rogue version: %s\n' "$1" >&2
+            usage >&2
+            return 2
+        fi
+        shift
+        play_version "$@"
+        direct_result=$?
+        case "$direct_result" in
+            1) : ;; # M: return to the version menu
+            2) goodbye_message; return 0 ;; # N: exit
+            *) return "$direct_result" ;;
+        esac
+    fi
+    if [ ! -t 0 ]; then
+        printf 'An interactive terminal is required.\n' >&2
+        return 2
+    fi
+    while :; do
+        show_main_menu
+        read_selection || { goodbye_message; return 0; }
+        handle_main_selection "$ANSWER"
+        case "$?" in
+            2) goodbye_message; return 0 ;;
+        esac
+    done
+}
+
+# Only the UTF-8 editor temporarily changes tty modes. It restores them
+# before returning, while the launcher's EXIT trap handles colors and files.
+main "$@"

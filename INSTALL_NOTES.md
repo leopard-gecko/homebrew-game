@@ -1,26 +1,29 @@
-# rogue-mac 0.3.3 — Homebrew publishing notes
+# rogue-mac 0.3.24 — 第5-A段階：macOS実機検証の準備と配布整合性の点検
 
-## Changes
+## 変更内容
 
-- In the main menu, rename `G  案内書` to `G  【運命の洞窟】への案内書`.
-- Swap the on-screen positions of `G` (guide) and `S` (game settings) in both Japanese and English.
-- Keep `G` and `Q` vertically aligned, with the full Japanese menu entry fitting the 52-column rule.
-- Update the Japanese guide-selection heading to `【運命の洞窟】への案内書`.
-- No change to the game selection, browser URLs, GUI-shared preferences, or gameplay settings.
+- 026のソースをベースに、バージョンのみ0.3.24に更新。メニュー表示、共有設定、起動・終了処理は変更していません。
+- 読み取り専用の `macos-check.sh` を追加。Homebrew、5種類のRogue実行ファイル、基本CLI、`defaults`の共有領域、データディレクトリを確認。ゲームやGUIは起動せず、保存値は出力しません。
+- `MACOS_TEST_GUIDE.md` に、Terminal.app、GUIとの設定往復、セーブ再開、UTF-8入力、終了時の端末復元の実機チェック手順を用意。
+- GitHub上の `leopard-gecko/homebrew-game` リポジトリのFormula配置と依存先5種の名前を確認。tap側はルート配置であり、現行の公開 `rogue-mac.rb` は0.3.3（vrogue-mac.006）です。027の公開後にFormula更新が必要です。
+- ReleaseアーカイブとHomebrew Formulaを027向けに再生成しSHA-256を更新。実際のGitHub公開は行っていません。
 
-## Release files
+## 検証範囲
 
-- `rogue-mac`: POSIX shell launcher, version `0.3.3`
-- `README_rogue-mac.md`, `README_rogue-mac_ja.md`: updated control descriptions
-- `README_homebrew-game.md`: optional updated top-level README (not part of the release tarball)
-- `rogue-mac.rb`: Homebrew Formula
-- `rogue-mac-006.tar.gz`: Release archive, SHA-256: `cc41684213a857e6859bee0490bc2cf512ac94dc80535380397052490d352482`
+- `sh -n` / `dash -n`、`ruby -c`、`--help`/`--list`/`--version`の基本検証。
+- `macos-check.sh` の引数処理、欠落バイナリや未設定設定領域での非破壊動作をLinux上で確認。
+- 026に対してランチャー本体の変更がバージョン表記2か所のみであることを確認。
+- アーカイブ内の実行権限、README、FormulaのURL・バージョン・ハッシュを検査。
 
-## Publishing
+## 制約
 
-1. Publish tag `vrogue-mac.006` in `leopard-gecko/homebrew-game`.
-2. Upload exactly this `rogue-mac-006.tar.gz` release archive.
-3. Update the tap's `rogue-mac.rb`, `README_rogue-mac.md`, `README_rogue-mac_ja.md`, and if desired the top-level `README.md` using `README_homebrew-game.md`.
-4. Run `brew update` and `brew upgrade rogue-mac` (or `brew install rogue-mac`) and `brew test rogue-mac` on macOS.
+macOS Terminal.app、Homebrewの実インストール、AppleScript GUIとの設定往復、実際のRogueのゲーム画面はこの実行環境ではテストできません。静的な一致や疑似端末のテストをMac実機の合格結果として扱わないでください。
 
-Do not publish the new Formula before the matching Release archive exists.
+## 公開準備
+
+- Releaseタグ：`vrogue-mac.027`
+- Release添付：`rogue-mac-027.tar.gz`
+- Formula：`rogue-mac.rb`
+- Mac上での確認方法：`MACOS_TEST_GUIDE.md` を参照。
+
+Release SHA-256: `897f51f66249049eece5408ca2644aea9ffa78601f7643a3652d6855c2c6cef1`
