@@ -70,9 +70,9 @@ rogue-mac 52       # Rogue 5.2
 
 ## GUI版との連携
 
-[GUI版「Rogue for macOS」](https://leopard-gecko.github.io/jrogue/) とCUI版では、プレイヤー名、好きな果物、ゲーム設定、セーブ・スコアファイルを共有しています。どちらのランチャーからでも同じセーブデータを利用できます。
+[GUI版「Rogue for macOS」](https://leopard-gecko.github.io/jrogue/) とCUI版では、プレイヤー名、好きな果物、ゲーム設定、セーブ・スコアファイルを共有しています。GUI版でセーブした冒険をCUI版で再開でき、その逆も同様です。
 
-セーブファイルは、どちらも `~/Library/Application Support/Rogue/` 以下のバージョン別フォルダに保存されます。同じセーブファイルを両方から同時に使用しないでください。
+セーブファイルは、どちらも `~/Library/Application Support/Rogue/` 以下のバージョン別フォルダに保存されます。
 
 ## 対応するRogue
 

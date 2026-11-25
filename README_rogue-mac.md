@@ -135,4 +135,4 @@ Save files are kept under `~/Library/Application Support/Rogue/`.
 
 Use `F` when resuming to choose a different saved game. To change the default save filename, use **All options**.
 
-Do not use the same saved game from both the [GUI](https://leopard-gecko.github.io/jrogue/) and the terminal at the same time.
+The [GUI version](https://leopard-gecko.github.io/jrogue/) and CUI version share save files, so you can save a game in one and resume it in the other.

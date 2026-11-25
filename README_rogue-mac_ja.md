@@ -135,4 +135,4 @@ rogue-mac --show-rogueopts
 
 別のセーブファイルは、再開時に `F` で指定できます。標準のセーブファイル名を変更する場合は「すべてのオプション」を利用してください。
 
-[GUI版](https://leopard-gecko.github.io/jrogue/)とCUI版で同じセーブファイルを同時に使用しないでください。
+[GUI版](https://leopard-gecko.github.io/jrogue/)とCUI版はセーブファイルを共用しており、一方でセーブした冒険をもう一方から再開できます。
