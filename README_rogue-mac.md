@@ -25,7 +25,7 @@ Enter a number or letter in the menu, then press Return.
 | `S` | Change game settings |
 | `Q` | Quit |
 
-Menus normally use a black background with colored text. To use your Terminal profile's colors, start with `rogue-mac --mono`.
+Menus normally use colored text while retaining your Terminal profile's background. To use your Terminal profile's standard text color, start with `rogue-mac --mono`.
 
 ## Guidebooks
 
@@ -79,13 +79,14 @@ Use the following keys in Game settings:
 | Number | Change the listed setting |
 | `M` | Change mode |
 | `L` | Change display language |
-| `A` | Show all options |
+| `A` | Open More Options |
 | `V` | Choose which version to configure |
 | `B` | Return to the main menu |
 
 Editing an individual setting switches the mode to **Custom**. Changes made in the [GUI](https://leopard-gecko.github.io/jrogue/) are reflected here too.
+Only changed settings are saved, so unrelated settings changed in the other launcher are not overwritten.
 
-## All options
+## More Options
 
 From Game settings, select `A` to access additional options. Select an **option number** to edit it, or `B` to return.
 
@@ -133,6 +134,6 @@ Save files are kept under `~/Library/Application Support/Rogue/`.
 | 3.6 | `3.6/` | `rogue36.save` |
 | 5.2 | `5.2/` | `rogue52.save` |
 
-Use `F` when resuming to choose a different saved game. To change the default save filename, use **All options**.
+Use `F` when resuming to choose a different saved game. To change the default save filename, use **More Options**.
 
 The [GUI version](https://leopard-gecko.github.io/jrogue/) and CUI version share save files, so you can save a game in one and resume it in the other.

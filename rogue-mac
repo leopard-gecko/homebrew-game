@@ -1,13 +1,13 @@
 #!/bin/sh
-# Rogue for macOS - terminal launcher (0.3.25)
+# Rogue for macOS - terminal launcher (0.3.26)
 # Shell-only interface; game files stay in the same directories as the GUI launcher.
 
-VERSION=0.3.25
+VERSION=0.3.26
 BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
 # Both the AppleScript GUI and this launcher use NSUserDefaults suite
 # "com.leopard.rogue". The defaults utility shares its preference domain.
 DEFAULTS_DOMAIN=com.leopard.rogue
-# All options use the AppleScript-shared domain. No CUI-specific store.
+# All saved options use the AppleScript-shared domain. No CUI-specific store.
 DEFAULTS_CMD=$(command -v defaults 2>/dev/null || :)
 PLAYER_NAME=
 PLAYER_FRUIT=''
@@ -22,6 +22,9 @@ EXTERNAL_EDITED_IDS=''
 PROFILE_EDITED=0
 LAST_ID=54
 S_MODE= S_LANGUAGE= S_COLOR= S_IDSCRL= S_TERSE= S_PASSGO= S_JUMP= S_ASKME= S_MAPCHARS= S_COMMANDS= S_MACRO=
+# Snapshot of effective values at the most recent load/commit. Saving a single
+# option must not overwrite another launcher's unrelated preference changes.
+BASE_MODE= BASE_LANGUAGE= BASE_COLOR= BASE_IDSCRL= BASE_TERSE= BASE_PASSGO= BASE_JUMP= BASE_ASKME= BASE_MAPCHARS= BASE_COMMANDS= BASE_MACRO=
 UI_MONO=0
 COLORS=0
 GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
@@ -383,9 +386,8 @@ ROGUE_MAC_LINE_EDITOR
     return "$line_status"
 }
 
-# Paint the entire terminal grid rather than only setting a black SGR
-# background for printed characters. Terminal.app may use a light default
-# background and need explicit spaces for previously blank cells.
+# Paint the entire terminal grid while keeping the user's Terminal background.
+# Use SGR 49 (default background), never force black with SGR 40.
 # Screen dimensions are read without consuming input or changing tty modes.
 clear_screen() {
     if terminal_has_ansi; then
@@ -427,9 +429,9 @@ init_colors() {
     COLORS=0 GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
     if [ "$UI_MONO" -eq 0 ] && terminal_has_ansi; then
         COLORS=1
-        # Launcher menus have a solid black background, independently of the
-        # Terminal profile. RST restores a readable light foreground on black.
-        RST=$(printf '\033[0;38;5;252;40m')
+        # Match the Terminal profile's exact background, including dark gray.
+        # SGR 49 avoids the colored-text background looking like black patches.
+        RST=$(printf '\033[0;38;5;252;49m')
         GOLD=$(printf '\033[38;5;180m')
         TITLE=$(printf '\033[38;5;223m')
         TEXT=$(printf '\033[38;5;252m')
@@ -746,6 +748,38 @@ game_setting_value() {
         *) return 1 ;;
     esac
 }
+# Keep a per-version effective-value snapshot, including external shell defaults.
+# A value supplied by ROGUEOPTS should not be written just because the user
+# subsequently edits some unrelated setting.
+capture_game_settings_baseline() {
+    BASE_MODE=$S_MODE BASE_LANGUAGE=$S_LANGUAGE BASE_COLOR=$S_COLOR
+    BASE_IDSCRL=$S_IDSCRL BASE_TERSE=$S_TERSE BASE_PASSGO=$S_PASSGO
+    BASE_JUMP=$S_JUMP BASE_ASKME=$S_ASKME BASE_MAPCHARS=$S_MAPCHARS
+    BASE_COMMANDS=$S_COMMANDS BASE_MACRO=$S_MACRO
+}
+baseline_setting_value() {
+    case "$1" in
+        mode) printf '%s' "$BASE_MODE" ;; language) printf '%s' "$BASE_LANGUAGE" ;;
+        color) printf '%s' "$BASE_COLOR" ;; idscrl) printf '%s' "$BASE_IDSCRL" ;;
+        terse) printf '%s' "$BASE_TERSE" ;; passgo) printf '%s' "$BASE_PASSGO" ;;
+        jump) printf '%s' "$BASE_JUMP" ;; askme) printf '%s' "$BASE_ASKME" ;;
+        mapchars) printf '%s' "$BASE_MAPCHARS" ;; commands) printf '%s' "$BASE_COMMANDS" ;;
+        macro) printf '%s' "$BASE_MACRO" ;;
+        *) return 1 ;;
+    esac
+}
+update_setting_baseline() {
+    case "$1" in
+        mode) BASE_MODE=$2 ;; language) BASE_LANGUAGE=$2 ;;
+        color) BASE_COLOR=$2 ;; idscrl) BASE_IDSCRL=$2 ;;
+        terse) BASE_TERSE=$2 ;; passgo) BASE_PASSGO=$2 ;;
+        jump) BASE_JUMP=$2 ;; askme) BASE_ASKME=$2 ;;
+        mapchars) BASE_MAPCHARS=$2 ;; commands) BASE_COMMANDS=$2 ;;
+        macro) BASE_MACRO=$2 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Validate stored values without writing defaults back to the GUI's domain.
 normalize_game_settings() {
     case "$S_MODE" in 'モダン'|'クラシック'|'細かく設定') : ;; *) S_MODE='モダン' ;; esac
@@ -781,6 +815,7 @@ load_game_settings() {
         case "$S_MODE" in モダン|クラシック) apply_mode_preset ;; esac
     fi
     apply_external_gui_settings
+    capture_game_settings_baseline
 }
 apply_mode_preset() {
     case "$GAME_ID:$S_MODE" in
@@ -807,25 +842,28 @@ report_partial_settings() {
     fi
 }
 save_game_settings() {
-    # Preserve the original complete key set and write ordering used by the
-    # AppleScript GUI. An unsuccessful write must not mark this version edited.
+    # Write only fields changed since load (matching the AppleScript GUI).
+    # In particular, selecting one setting or switching modes must not write
+    # stale copies of unrelated options that the GUI might have just changed.
     for gs_save_field in mode language color idscrl terse passgo jump askme mapchars commands macro; do
-        gs_save_key=$(game_setting_key "$gs_save_field") || return 1
         gs_save_value=$(game_setting_value "$gs_save_field") || return 1
+        gs_save_before=$(baseline_setting_value "$gs_save_field") || return 1
+        [ "$gs_save_value" != "$gs_save_before" ] || continue
+        gs_save_key=$(game_setting_key "$gs_save_field") || return 1
+        gs_save_suffix=$(game_setting_suffix "$gs_save_field") || return 1
         if ! write_profile_value "$gs_save_key" "$gs_save_value"; then
             report_partial_settings
             return 1
         fi
+        # The GUI also keeps the old, non-versioned fallback in sync, but
+        # only for a field the user actually changed.
+        if ! write_profile_value "Saved${gs_save_suffix}" "$gs_save_value"; then
+            report_partial_settings
+            return 1
+        fi
+        update_setting_baseline "$gs_save_field" "$gs_save_value" || return 1
+        mark_version_edited
     done
-    if ! write_profile_value Savedgamemode "$S_MODE"; then
-        report_partial_settings
-        return 1
-    fi
-    if ! write_profile_value Savedmylanguage "$S_LANGUAGE"; then
-        report_partial_settings
-        return 1
-    fi
-    mark_version_edited
     return 0
 }
 # Follow the GUI's translation rule only for built-in fruit names, and only
@@ -1019,7 +1057,7 @@ advanced_option_label() {
     if [ "$LANG_JA" -eq 1 ]; then
         case "$1" in
             color) printf 'カラー表示' ;; cursor) printf 'カーソル表示' ;;
-            seefloor) printf '照明範囲の床表示' ;; terse) printf '簡潔な表示' ;;
+            seefloor) printf '照明範囲の床表示' ;; terse) printf '表示の長さ' ;;
             flush) printf '戦闘時の先行入力取消' ;; jump) printf '移動中の表示省略' ;;
             passgo) printf '通路の角を自動で曲がる' ;; tombstone) printf '死亡時の墓標表示' ;;
             inven) printf '持ち物の表示方式' ;; idscrl) printf '識別の巻物を１種類にする' ;;
@@ -1033,7 +1071,7 @@ advanced_option_label() {
     else
         case "$1" in
             color) printf 'Color' ;; cursor) printf 'Cursor' ;;
-            seefloor) printf 'Lit floor' ;; terse) printf 'Terse messages' ;;
+            seefloor) printf 'Lit floor' ;; terse) printf 'Message length' ;;
             flush) printf 'Flush typeahead' ;; jump) printf 'Skip run frames' ;;
             passgo) printf 'Follow corners' ;; tombstone) printf 'Tombstone' ;;
             inven) printf 'Inventory style' ;; idscrl) printf 'One identify scroll' ;;
@@ -1108,7 +1146,7 @@ advanced_effective_mode() {
     if [ "$adv_effective_saved" = inherit ]; then
         # Cursor visibility is already derived from the GUI's color preset.
         # The current launcher intentionally ignores an external cursor token
-        # unless the user explicitly chooses a cursor value in All Options.
+        # unless the user explicitly chooses a cursor value in More Options.
         if [ "$1" = cursor ]; then
             if [ "$S_COLOR" = カラー ] || { [ "$GAME_ID" = dos ] && [ "$S_MAPCHARS" = 拡張 ]; }; then
                 printf off
@@ -1189,14 +1227,14 @@ advanced_state_label() {
         case "$adv_sl_mode" in
             inherit) printf '標準のファイル名' ;; on) printf '有効' ;; off) printf '無効' ;;
             custom) printf '個別に指定' ;;
-            ja) printf '日本語' ;; en) printf '英語' ;;
+            ja) printf '日本語' ;; en) printf 'English' ;;
             Overwrite) printf '上書き' ;; Slow) printf '低速' ;; Clear) printf 'クリア' ;;
             sel) printf '選択式' ;; *) printf '%s' "$adv_sl_mode" ;;
         esac
     else
         case "$adv_sl_mode" in
-            inherit) printf 'Standard file name' ;; on) printf 'On' ;; off) printf 'Off' ;;
-            custom) printf 'Specified value' ;;
+            inherit) printf 'Standard filename' ;; on) printf 'On' ;; off) printf 'Off' ;;
+            custom) printf 'Custom filename' ;;
             ja) printf 'Japanese' ;; en) printf 'English' ;;
             Overwrite) printf 'Overwrite' ;; Slow) printf 'Slow' ;; Clear) printf 'Clear' ;;
             sel) printf 'Select' ;; *) printf '%s' "$adv_sl_mode" ;;
@@ -1341,14 +1379,14 @@ advanced_edit_additional() {
 advanced_reset() {
     clear_screen
     if [ "$LANG_JA" -eq 1 ]; then
-        printf '%s%s — 個別設定をリセット%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        printf '%s%s — 追加設定をリセット%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
         printf '%s\n' 'このバージョンで個別に保存したオプション指定を解除します。'
         printf '%s\n' 'プレイヤー名・果物・カラーなどの基本設定は変更しません。'
         printf '%s\n' '解除した項目は、ログインシェルのROGUEOPTSに指定があればその値を使い、'
         printf '%s\n' 'なければゲーム本体の初期設定を使います。'
         printf '\n%s' 'リセットしますか？ (Y/N) › '
     else
-        printf '%s%s — Reset individual options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+        printf '%s%s — Reset additional options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
         printf '%s\n' 'Remove separately saved option choices for this version.'
         printf '%s\n' 'Player name, fruit, color and other basic settings will stay unchanged.'
         printf '%s\n' 'For cleared options, login-shell ROGUEOPTS is used when specified;'
@@ -1374,7 +1412,7 @@ advanced_reset() {
         done
     done
     if [ "$adv_rs_failed" -ne 0 ]; then
-        if [ "$LANG_JA" -eq 1 ]; then printf '%s\n' '一部の個別設定をリセットできませんでした。'; else printf '%s\n' 'Some individual options could not be reset.'; fi
+        if [ "$LANG_JA" -eq 1 ]; then printf '%s\n' '一部の追加設定をリセットできませんでした。'; else printf '%s\n' 'Some individual options could not be reset.'; fi
         wait_for_return || :
         return 1
     fi
@@ -1387,9 +1425,9 @@ show_advanced_settings() {
         load_profile
         clear_screen
         if [ "$LANG_JA" -eq 1 ]; then
-            printf '%s%s — 全オプション%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+            printf '%s%s — 詳細設定%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
         else
-            printf '%s%s — All options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
+            printf '%s%s — Advanced Game Options%s\n\n' "$TITLE" "$GAME_TITLE" "$RST"
         fi
         adv_menu_index=1
         for adv_menu_opt in $(advanced_option_keys); do
@@ -1413,11 +1451,11 @@ show_advanced_settings() {
         done
         printf '\n'
         if [ "$LANG_JA" -eq 1 ]; then
-            printf '  %sR%s  個別設定をリセット\n' "$GOLD" "$RST"
+            printf '  %sR%s  追加設定をリセット\n' "$GOLD" "$RST"
             printf '  %sB%s  ゲーム設定へ戻る\n\n' "$GOLD" "$RST"
             printf '%s' '選択 › '
         else
-            printf '  %sR%s  Reset individual options\n' "$GOLD" "$RST"
+            printf '  %sR%s  Reset additional options\n' "$GOLD" "$RST"
             printf '  %sB%s  Back to game settings\n\n' "$GOLD" "$RST"
             printf '%s' 'Select › '
         fi
@@ -1470,7 +1508,7 @@ show_game_settings() {
         printf '\n'
         menu_key_choice M "$(if [ "$LANG_JA" -eq 1 ]; then printf 'モードを変更'; else printf 'Change mode'; fi)"
         menu_key_choice L "$(if [ "$LANG_JA" -eq 1 ]; then printf '表示言語を変更'; else printf 'Change language'; fi)"
-        menu_key_choice A "$(if [ "$LANG_JA" -eq 1 ]; then printf '全オプションを設定'; else printf 'All options'; fi)"
+        menu_key_choice A "$(if [ "$LANG_JA" -eq 1 ]; then printf '詳細設定'; else printf 'More Options…'; fi)"
         menu_key_choice V "$(if [ "$LANG_JA" -eq 1 ]; then printf 'バージョンを変更'; else printf 'Choose version'; fi)"
         menu_key_choice B "$(if [ "$LANG_JA" -eq 1 ]; then printf 'メインメニューへ戻る'; else printf 'Back to menu'; fi)"
         printf '\n'
