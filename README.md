@@ -1,90 +1,28 @@
-# Rogue for macOS（CUI版）
+# Homebrew Formula updates — 2026-11-26
 
-Rogueは、1980年頃に誕生した、文字や記号で描かれた迷宮を探索するコンピューターRPGです。怪物と戦い、道具を使いながら、迷宮の奥に隠された「イェンダーの魔除け」を探します。プレイするたびに迷宮が変わる、いわゆる「ローグライクゲーム」の原点となった作品です。
+Replace these three files in the root of `leopard-gecko/homebrew-game`:
 
-**Rogue for macOS** には、ターミナルで操作する **CUI版** と、画面上で操作する [**GUI版**](https://leopard-gecko.github.io/jrogue/) があります。**このリポジトリで配布するのはCUI版** です。GUI版は[専用の配布サイト](https://leopard-gecko.github.io/jrogue/)で公開しています。
+| Formula | New version | Release |
+| --- | --- | --- |
+| `rogue34.rb` | `3.4.002` | `rogue_3.4_jec` `v002` |
+| `rogue36.rb` | `3.6.007` | `rogue_3.6_jec` `v007` |
+| `rogue54-wizard.rb` | `5.4.5jec.057` | `rogue_5.4.5_jec` `v57` |
 
-CUI版では、**Rogueのバージョン違いや派生版を合わせた5つ**（5.4.5、Clone III、DOS Tribute、3.6、5.2）を選んで遊べます。日本語・英語の切り替え、ゲーム設定の変更、セーブからの再開などに対応しています。Homebrewでランチャー `rogue-mac` をインストールすると、これらのゲームもまとめてインストールされます。
+The download URL and SHA-256 in each Formula match the published release asset and its GitHub digest. Existing installation procedures, executable names, save/score names, and tests are unchanged.
 
-[GUI版「Rogue for macOS」](https://leopard-gecko.github.io/jrogue/) とプレイヤー情報、ゲーム設定、セーブ・スコアファイルを共有できます。各ゲームの特徴や詳しい遊び方、ソースコードについては、[対応するRogue](#対応するrogue) の各リポジトリをご覧ください。
+Other Formulas (`rogue54.rb`, `rogue-c3.rb`, `rogue-dos.rb`, `rogue52.rb`, `rogue-mac.rb`) already reference the latest matching releases as of the check and do not need updates.
 
-## 必要環境
+Validation run on Linux: `ruby -c` for all three files; source `Makefile`/`configure` parameters checked at corresponding release tags. Homebrew install and runtime tests require a Mac and have not been run here.
 
-- macOS
-- [Homebrew](https://brew.sh/ja/)
-
-## インストール
-
-ターミナルで以下を実行します。
-
-```sh
-brew tap leopard-gecko/game
-brew trust leopard-gecko/game
-brew install rogue-mac
-```
-
-`rogue-mac` とともに、上記の5つのバージョン・派生版がインストールされます。
-
-更新する場合は次のコマンドを使用します。
+After uploading the replacements to the GitHub repository, on a Mac run:
 
 ```sh
 brew update
-brew upgrade rogue-mac
+brew upgrade rogue34 rogue36
+# if rogue54-wizard is installed:
+brew upgrade rogue54-wizard
 ```
 
-## 起動方法
+If the formula names are not recognized without a tap, use the fully qualified `leopard-gecko/game/rogue34`, `leopard-gecko/game/rogue36` and `leopard-gecko/game/rogue54-wizard` names.
 
-ターミナルで以下を実行すると、バージョン選択メニューが開きます。
-
-```sh
-rogue-mac
-```
-
-メニューでは番号・アルファベットを入力し、Returnで確定します。
-
-| 入力 | 操作 |
-| --- | --- |
-| `1`〜`5` | 遊びたいRogueを選ぶ |
-| Returnのみ | 前回選択したRogueを選ぶ |
-| `P` | プレイヤー情報を変更 |
-| `S` | ゲーム設定を変更 |
-| `G` | 案内書をWebブラウザで開く |
-| `Q` | ランチャーを終了 |
-
-バージョンを指定して直接起動することもできます。
-
-```sh
-rogue-mac 54       # Rogue 5.4.5
-rogue-mac clone    # Rogue Clone III
-rogue-mac dos      # Rogue DOS Tribute
-rogue-mac 36       # Rogue 3.6
-rogue-mac 52       # Rogue 5.2
-```
-
-セーブファイルがある場合は、再開するか新しい冒険を始めるかを選べます。案内書の閲覧にはインターネット接続が必要です。
-
-操作方法や設定項目の詳細は、ランチャーのREADMEをご覧ください。
-
-- [使い方（日本語）](README_rogue-mac_ja.md)
-- [User guide (English)](README_rogue-mac.md)
-
-## GUI版との連携
-
-[GUI版「Rogue for macOS」](https://leopard-gecko.github.io/jrogue/) とCUI版では、プレイヤー名、好きな果物、ゲーム設定、セーブ・スコアファイルを共有しています。GUI版でセーブした冒険をCUI版で再開でき、その逆も同様です。
-設定は変更した項目だけを書き込むため、他方のランチャーで変更した別の項目を一括して上書きしません。
-
-セーブファイルは、どちらも `~/Library/Application Support/Rogue/` 以下のバージョン別フォルダに保存されます。
-
-## 対応するRogue
-
-各バージョンの詳しい説明、ゲームの仕様、案内書、ソースコードは、それぞれのリポジトリを参照してください。
-
-| バージョン | 主な特徴 | 単体インストール |
-| --- | --- | --- |
-| [Rogue 5.4.5 JEC](https://github.com/leopard-gecko/rogue_5.4.5_jec) | 1985年に登場した、Rogueのオリジナル系統の最終版。 | `brew install rogue54` |
-| [Rogue Clone III JEC](https://github.com/leopard-gecko/rogue_clone_iii_jec) | 暗い部屋がなく、巻き物や水薬が使用後に基本的に自動識別されるクローン版。 | `brew install rogue-c3` |
-| [Rogue DOS Tribute](https://github.com/leopard-gecko/rogue_dos_tribute) | DOS版Rogue 1.48を参考に、怪物・道具・操作・演出を再構成した派生版。 | `brew install rogue-dos` |
-| [Rogue 3.6 JEC](https://github.com/leopard-gecko/rogue_3.6_jec) | 初期Rogueの特徴を残し、後期版とは怪物や道具が異なる版。 | `brew install rogue36` |
-| [Rogue 5.2 JEC](https://github.com/leopard-gecko/rogue_5.2_jec) | Rogue 5.4より前の版で、怪物・道具やゲームの仕組みに違いがある版。 | `brew install rogue52` |
-
-各ゲームだけを利用する場合は、表のコマンドで個別にインストールできます。ソースからのビルド方法やゲーム固有の設定も各リポジトリを参照してください。
+The CUI launcher still installs five Rogue editions; `rogue34` remains separately installable and is not added to `rogue-mac` as an automatic dependency.
