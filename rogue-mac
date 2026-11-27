@@ -1,8 +1,8 @@
 #!/bin/sh
-# Rogue for macOS - terminal launcher (0.3.26)
+# Rogue for macOS - terminal launcher (0.3.27)
 # Shell-only interface; game files stay in the same directories as the GUI launcher.
 
-VERSION=0.3.26
+VERSION=0.3.27
 BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
 # Both the AppleScript GUI and this launcher use NSUserDefaults suite
 # "com.leopard.rogue". The defaults utility shares its preference domain.
@@ -39,7 +39,7 @@ usage() {
     cat <<'EOF'
 Rogue for macOS
 
-Usage: rogue-mac [54|clone|dos|36|52] [game-arguments...]
+Usage: rogue-mac [54|clone|dos|36|52|34] [game-arguments...]
        rogue-mac --list
        rogue-mac --mono
        rogue-mac --show-rogueopts
@@ -50,7 +50,7 @@ When a default saved game exists, choose Resume, New, another File, or Back.
 After the game ends, choose Play again, Menu, or Quit.
 Return selects the last version chosen by either launcher.
 P edits the shared player name/fruit; S edits per-version game settings.
-Within S, A opens all game options, using GUI-shared values where available.
+Within S, A opens advanced game options, using GUI-shared values where available.
 Saved additional options are applied to newly started games.
 DOS Tribute macros are limited to 40 bytes (and cannot contain the x trigger).
 The login-shell ROGUEOPTS is read at startup and refreshed before games.
@@ -60,7 +60,7 @@ The menu follows the AppleScript GUI preferences in com.leopard.rogue.
 Game arguments are passed directly to the selected Rogue executable.
 
 The launcher uses the same directories as the Rogue for macOS GUI:
-  ~/Library/Application Support/Rogue/{5.4,Clone III,DOS 1.48,3.6,5.2}/
+  ~/Library/Application Support/Rogue/{5.4,Clone III,DOS 1.48,3.6,5.2,3.4}/
 EOF
 }
 
@@ -70,6 +70,7 @@ list_versions() {
     printf '3. Rogue DOS Tribute\n'
     printf '4. Rogue 3.6\n'
     printf '5. Rogue 5.2\n'
+    printf '6. Rogue 3.4\n'
 }
 
 resolve_version() {
@@ -79,6 +80,7 @@ resolve_version() {
         3|dos|dos148|rogue-dos|"DOS Tribute"|"DOS 1.48風") GAME_ID=dos ;;
         4|36|3.6|rogue36) GAME_ID=36 ;;
         5|52|5.2|rogue52) GAME_ID=52 ;;
+        6|34|3.4|rogue34|"Rogue 3.4") GAME_ID=34 ;;
         *) return 1 ;;
     esac
     return 0
@@ -94,6 +96,7 @@ version_settings_prefix() {
         dos) printf 'SavedVersionDOS148' ;;
         36) printf 'SavedVersion36' ;;
         52) printf 'SavedVersion52' ;;
+        34) printf 'SavedVersion34' ;;
         *) return 1 ;;
     esac
 }
@@ -129,6 +132,12 @@ setup_game() {
             GAME_DIR=$BASE_DIR/5.2
             GUI_VERSION='5.2'
             SAVE_FILE=rogue52.save ;;
+        34)
+            GAME_TITLE='Rogue 3.4'
+            GAME_BIN=rogue34
+            GAME_DIR=$BASE_DIR/3.4
+            GUI_VERSION='3.4'
+            SAVE_FILE=rogue34.save ;;
         *) return 1 ;;
     esac
     SETTINGS_PREFIX=$(version_settings_prefix "$GAME_ID") || return 1
@@ -724,8 +733,8 @@ game_setting_default() {
         idscrl) printf '１種類' ;;
         terse) printf 'ふつう' ;;
         passgo) printf '止まらない' ;;
-        jump) case "$GAME_ID" in clone|36|52) printf False ;; *) printf True ;; esac ;;
-        askme) case "$GAME_ID" in 36|52) printf True ;; *) printf False ;; esac ;;
+        jump) case "$GAME_ID" in clone|36|52|34) printf False ;; *) printf True ;; esac ;;
+        askme) case "$GAME_ID" in 36|52|34) printf True ;; *) printf False ;; esac ;;
         mapchars) printf '拡張' ;;
         commands) printf '5.4風' ;;
         macro) printf 'v' ;;
@@ -811,7 +820,7 @@ load_game_settings() {
     S_MACRO=$(read_game_setting macro)
     normalize_game_settings
     # Do not overwrite stored values here.
-    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ]; then
+    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ] || [ "$GAME_ID" = 34 ]; then
         case "$S_MODE" in モダン|クラシック) apply_mode_preset ;; esac
     fi
     apply_external_gui_settings
@@ -826,7 +835,9 @@ apply_mode_preset() {
         dos:モダン) S_COLOR=カラー; S_MAPCHARS=拡張; S_COMMANDS='5.4風'; S_MACRO=v; S_TERSE=ふつう ;;
         dos:クラシック) S_COLOR=カラー; S_MAPCHARS=拡張; S_COMMANDS='DOS 1.48風'; S_MACRO=v; S_TERSE=ふつう ;;
         36:モダン) S_TERSE=ふつう; S_JUMP=False; S_ASKME=True ;;
+        34:モダン) S_TERSE=ふつう; S_JUMP=False; S_ASKME=True ;;
         36:クラシック) S_TERSE=ふつう; S_JUMP=False; S_ASKME=False ;;
+        34:クラシック) S_TERSE=ふつう; S_JUMP=False; S_ASKME=False ;;
         52:モダン) S_COLOR=カラー; S_PASSGO=止まらない; S_TERSE=ふつう; S_JUMP=False; S_ASKME=True ;;
         52:クラシック) S_COLOR=モノクロ; S_PASSGO=止まる; S_TERSE=ふつう; S_JUMP=False; S_ASKME=False ;;
     esac
@@ -893,6 +904,7 @@ fields_for_version() {
         clone) printf '%s' 'color passgo jump' ;;
         dos) printf '%s' 'color mapchars commands macro terse' ;;
         36) printf '%s' 'terse jump askme' ;;
+        34) printf '%s' 'terse jump askme' ;;
         52) printf '%s' 'color passgo terse askme' ;;
     esac
 }
@@ -1021,6 +1033,7 @@ advanced_option_keys() {
         clone) printf '%s' 'color cursor jump passgo noaskquit noskull name fruit language file' ;;
         dos) printf '%s' 'color cursor extchars terse jump doskeys menu macro name fruit language file' ;;
         36) printf '%s' 'terse flush jump step askme name fruit language file' ;;
+        34) printf '%s' 'terse flush jump step askme name fruit language file' ;;
         52) printf '%s' 'color cursor terse flush jump step askme passgo name fruit language file' ;;
     esac
 }
@@ -1034,10 +1047,10 @@ advanced_shared_target() {
     case "$GAME_ID:$1" in
         54:color|clone:color|dos:color|52:color) printf 'color' ;;
         54:idscrl) printf 'idscrl' ;;
-        54:terse|dos:terse|36:terse|52:terse) printf 'terse' ;;
+        54:terse|dos:terse|36:terse|52:terse|34:terse) printf 'terse' ;;
         54:passgo|clone:passgo|52:passgo) printf 'passgo' ;;
-        clone:jump|36:jump) printf 'jump' ;;
-        36:askme|52:askme) printf 'askme' ;;
+        clone:jump|36:jump|34:jump) printf 'jump' ;;
+        36:askme|52:askme|34:askme) printf 'askme' ;;
         dos:extchars) printf 'mapchars' ;;
         dos:doskeys) printf 'commands' ;;
         dos:macro) printf 'macro' ;;
@@ -1104,6 +1117,7 @@ advanced_default_mode() {
         clone:cursor|clone:jump|\
         dos:cursor|dos:jump|dos:terse|\
         36:flush|36:step|36:terse|36:jump|36:askme|\
+        34:flush|34:step|34:terse|34:jump|34:askme|\
         52:cursor|52:flush|52:step|52:terse|52:jump) printf off ;;
         54:inven) printf Overwrite ;;
         *) printf on ;;
@@ -1610,7 +1624,7 @@ write_profile_value() {
     return 0
 }
 
-# ROGUEOPTS is comma-delimited in all five games. Reject commas and line
+# ROGUEOPTS is comma-delimited in all six games. Reject commas and line
 # breaks in newly entered values instead of writing settings the games cannot
 # interpret. Older GUI values are never changed implicitly.
 valid_profile_value() {
@@ -1699,7 +1713,7 @@ version_title_for() (
 show_version_entries() (
     entry_mode=$1
     idx=1
-    for id in 54 clone dos 36 52; do
+    for id in 54 clone dos 36 52 34; do
         GAME_ID=$id
         setup_game || exit 1
         version=$GAME_TITLE
@@ -1768,6 +1782,7 @@ guide_url_for_version() {
         dos)   printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=dos148' ;;
         36)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=36' ;;
         52)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=52' ;;
+        34)    printf '%s' 'https://leopard-gecko.github.io/jrogue/guide.html?version=34' ;;
         *) return 1 ;;
     esac
 }
@@ -1798,7 +1813,7 @@ show_guide_menu() {
         case "$ANSWER" in
             [bB]|[qQ]) return 0 ;;
             '') guide_id=$LAST_ID ;;
-            1|2|3|4|5)
+            1|2|3|4|5|6)
                 if ! resolve_version "$ANSWER"; then continue; fi
                 guide_id=$GAME_ID ;;
             *) continue ;;
@@ -2040,7 +2055,7 @@ new_game_options() {
             [ "$S_COMMANDS" != '5.4風' ] || append_game_option nodoskeys
             if advanced_validate_text macro "$S_MACRO"; then append_game_option "macro=$S_MACRO"; else append_game_option 'macro=v'; fi
             append_game_option "$terse_opt" ;;
-        36)
+        36|34)
             [ "$S_JUMP" != True ] || append_game_option jump
             if [ "$S_ASKME" = True ]; then append_game_option askme; else append_game_option noaskme; fi
             append_game_option "$terse_opt" ;;
@@ -2118,8 +2133,8 @@ run_selected_game() {
             printf '\nGame exited with status %s.\n' "$result"
         fi
     fi
-    # Keep the post-score-screen pause for 3.6 and 5.2.
-    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ]; then
+    # Keep the post-score-screen pause for 3.4, 3.6 and 5.2.
+    if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ] || [ "$GAME_ID" = 34 ]; then
         if [ -t 1 ]; then
             printf '\033[24;1H\033[2K'
         fi

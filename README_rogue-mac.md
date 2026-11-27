@@ -1,6 +1,6 @@
 # Rogue for macOS (rogue-mac)
 
-The **CUI edition of Rogue for macOS** is a terminal launcher for different Rogue versions and derivatives: 5.4, Clone III, DOS Tribute, 3.6, and 5.2. It shares player information, game settings, and save/score files with the [Rogue for macOS GUI edition](https://leopard-gecko.github.io/jrogue/).
+The **CUI edition of Rogue for macOS** is a terminal launcher for different Rogue versions and derivatives: 5.4, Clone III, DOS Tribute, 3.6, 5.2, and 3.4. It shares player information, game settings, and save/score files with the [Rogue for macOS GUI edition](https://leopard-gecko.github.io/jrogue/).
 
 ## Starting the launcher
 
@@ -11,6 +11,7 @@ rogue-mac clone     # Rogue Clone III
 rogue-mac dos       # Rogue DOS Tribute
 rogue-mac 36        # Rogue 3.6
 rogue-mac 52        # Rogue 5.2
+rogue-mac 34        # Rogue 3.4
 rogue-mac --help    # Show usage
 ```
 
@@ -18,18 +19,18 @@ Enter a number or letter in the menu, then press Return.
 
 | Key | Action |
 | --- | --- |
-| `1`–`5` | Choose a Rogue version |
+| `1`–`6` | Choose a Rogue version |
 | Return alone | Choose the last selected version |
 | `P` | Edit player information |
 | `G` | Open a guidebook |
 | `S` | Change game settings |
 | `Q` | Quit |
 
-Menus normally use colored text while retaining your Terminal profile's background. To use your Terminal profile's standard text color, start with `rogue-mac --mono`.
+The menu preserves your Terminal profile's background. Use `rogue-mac --mono` to keep your Terminal's default text colors as well.
 
 ## Guidebooks
 
-Select `G` on the main menu, then choose a version with `1`–`5` to open its guidebook in your browser. Press Return for the last selected version or `B` to return to the main menu. An internet connection is required.
+Select `G` on the main menu, then choose a version with `1`–`6` to open its guidebook in your browser. Press Return for the last selected version or `B` to return to the main menu. An internet connection is required.
 
 ## Saved games and replay
 
@@ -71,6 +72,7 @@ Select `S` on the main menu. **Modern** and **Classic** apply ready-made setting
 | DOS Tribute | Color, map characters, key bindings, macro, message length |
 | 3.6 | Message length, jump, unidentified-item confirmation |
 | 5.2 | Color, corner movement, message length, unidentified-item confirmation |
+| 3.4 | Message length, jump, unidentified-item confirmation |
 
 Use the following keys in Game settings:
 
@@ -79,14 +81,13 @@ Use the following keys in Game settings:
 | Number | Change the listed setting |
 | `M` | Change mode |
 | `L` | Change display language |
-| `A` | Open More Options |
+| `A` | Open advanced options |
 | `V` | Choose which version to configure |
 | `B` | Return to the main menu |
 
 Editing an individual setting switches the mode to **Custom**. Changes made in the [GUI](https://leopard-gecko.github.io/jrogue/) are reflected here too.
-Only changed settings are saved, so unrelated settings changed in the other launcher are not overwritten.
 
-## More Options
+## Advanced game options
 
 From Game settings, select `A` to access additional options. Select an **option number** to edit it, or `B` to return.
 
@@ -97,6 +98,7 @@ From Game settings, select `A` to access additional options. Select an **option 
 | DOS Tribute | Cursor, movement display, inventory menu |
 | 3.6 | Combat input, step-by-step inventory |
 | 5.2 | Cursor, combat input, movement display, step-by-step inventory |
+| 3.4 | Combat input, step-by-step inventory |
 
 Most options are switched **On / Off**. You can also change the default save filename here.
 
@@ -133,7 +135,8 @@ Save files are kept under `~/Library/Application Support/Rogue/`.
 | DOS Tribute | `DOS 1.48/` | `rogue-dos.save` |
 | 3.6 | `3.6/` | `rogue36.save` |
 | 5.2 | `5.2/` | `rogue52.save` |
+| 3.4 | `3.4/` | `rogue34.save` |
 
-Use `F` when resuming to choose a different saved game. To change the default save filename, use **More Options**.
+Use `F` when resuming to choose a different saved game. To change the default save filename, use **Advanced game options**.
 
 The [GUI version](https://leopard-gecko.github.io/jrogue/) and CUI version share save files, so you can save a game in one and resume it in the other.
