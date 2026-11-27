@@ -86,6 +86,8 @@ rogue-mac 34       # Rogue 3.4
 | [Rogue DOS Tribute](https://github.com/leopard-gecko/rogue_dos_tribute) | DOS版Rogue 1.48を参考に、怪物・道具・操作・演出を再構成した派生版。 | `brew install rogue-dos` |
 | [Rogue 3.6 JEC](https://github.com/leopard-gecko/rogue_3.6_jec) | 初期Rogueの特徴を残し、後期版とは怪物や道具が異なる版。 | `brew install rogue36` |
 | [Rogue 5.2 JEC](https://github.com/leopard-gecko/rogue_5.2_jec) | Rogue 5.4より前の版で、怪物・道具やゲームの仕組みに違いがある版。 | `brew install rogue52` |
-| [Rogue 3.4 JEC](https://github.com/leopard-gecko/rogue_3.4_jec) | 1981年頃の初期Rogueを再構成した版で、当時のゲームルールに近い操作感を楽しめます。 | `brew install rogue34` |
+| [Rogue 3.4 JEC](https://github.com/leopard-gecko/rogue_3.4_jec) | 1981年に発表された、現在入手できる最も古いRogue。 | `brew install rogue34` |
 
 各ゲームだけを利用する場合は、表のコマンドで個別にインストールできます。ソースからのビルド方法やゲーム固有の設定も各リポジトリを参照してください。
+
+Rogue 3.4／3.6では、GUI/CUI共通の「端末表示」で白・緑・アンバーのCRT風配色を選べます。Terminal.appのタブだけを一時的に変更し、プロファイルは作成しません。

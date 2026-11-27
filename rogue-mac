@@ -1,8 +1,8 @@
 #!/bin/sh
-# Rogue for macOS - terminal launcher (0.3.27)
+# Rogue for macOS - terminal launcher (0.3.28)
 # Shell-only interface; game files stay in the same directories as the GUI launcher.
 
-VERSION=0.3.27
+VERSION=0.3.28
 BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
 # Both the AppleScript GUI and this launcher use NSUserDefaults suite
 # "com.leopard.rogue". The defaults utility shares its preference domain.
@@ -21,10 +21,12 @@ EXTERNAL_ROGUEOPTS=''
 EXTERNAL_EDITED_IDS=''
 PROFILE_EDITED=0
 LAST_ID=54
-S_MODE= S_LANGUAGE= S_COLOR= S_IDSCRL= S_TERSE= S_PASSGO= S_JUMP= S_ASKME= S_MAPCHARS= S_COMMANDS= S_MACRO=
+S_MODE= S_LANGUAGE= S_COLOR= S_IDSCRL= S_TERSE= S_PASSGO= S_JUMP= S_ASKME= S_MAPCHARS= S_COMMANDS= S_MACRO= S_TERMINAL_DISPLAY=normal
 # Snapshot of effective values at the most recent load/commit. Saving a single
 # option must not overwrite another launcher's unrelated preference changes.
-BASE_MODE= BASE_LANGUAGE= BASE_COLOR= BASE_IDSCRL= BASE_TERSE= BASE_PASSGO= BASE_JUMP= BASE_ASKME= BASE_MAPCHARS= BASE_COMMANDS= BASE_MACRO=
+BASE_MODE= BASE_LANGUAGE= BASE_COLOR= BASE_IDSCRL= BASE_TERSE= BASE_PASSGO= BASE_JUMP= BASE_ASKME= BASE_MAPCHARS= BASE_COMMANDS= BASE_MACRO= BASE_TERMINAL_DISPLAY=normal
+# CRT tab overrides are temporary. No Terminal profile is created or modified.
+CRT_TTY='' CRT_SNAPSHOT='' CRT_MODE='' CRT_HELPER=''
 UI_MONO=0
 COLORS=0
 GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
@@ -455,6 +457,7 @@ reset_screen_colors() {
 cleanup_launcher() {
     # No normal exit, EOF or trapped signal may leave temporary input behind.
     if [ -n "$INPUT_TMP" ]; then rm -f "$INPUT_TMP" 2>/dev/null || :; fi
+    restore_game_crt_colors
     reset_screen_colors
 }
 line52() {
@@ -718,6 +721,7 @@ game_setting_suffix() {
         jump) printf 'myjump' ;; askme) printf 'myaskme' ;;
         mapchars) printf 'mymapchars' ;; commands) printf 'mycommands' ;;
         macro) printf 'mymacro' ;;
+        terminalDisplay) printf 'terminalDisplay' ;;
         *) return 1 ;;
     esac
 }
@@ -738,6 +742,7 @@ game_setting_default() {
         mapchars) printf '拡張' ;;
         commands) printf '5.4風' ;;
         macro) printf 'v' ;;
+        terminalDisplay) printf normal ;;
         *) return 1 ;;
     esac
 }
@@ -754,6 +759,7 @@ game_setting_value() {
         jump) printf '%s' "$S_JUMP" ;; askme) printf '%s' "$S_ASKME" ;;
         mapchars) printf '%s' "$S_MAPCHARS" ;; commands) printf '%s' "$S_COMMANDS" ;;
         macro) printf '%s' "$S_MACRO" ;;
+        terminalDisplay) printf '%s' "$S_TERMINAL_DISPLAY" ;;
         *) return 1 ;;
     esac
 }
@@ -765,6 +771,7 @@ capture_game_settings_baseline() {
     BASE_IDSCRL=$S_IDSCRL BASE_TERSE=$S_TERSE BASE_PASSGO=$S_PASSGO
     BASE_JUMP=$S_JUMP BASE_ASKME=$S_ASKME BASE_MAPCHARS=$S_MAPCHARS
     BASE_COMMANDS=$S_COMMANDS BASE_MACRO=$S_MACRO
+    BASE_TERMINAL_DISPLAY=$S_TERMINAL_DISPLAY
 }
 baseline_setting_value() {
     case "$1" in
@@ -774,6 +781,7 @@ baseline_setting_value() {
         jump) printf '%s' "$BASE_JUMP" ;; askme) printf '%s' "$BASE_ASKME" ;;
         mapchars) printf '%s' "$BASE_MAPCHARS" ;; commands) printf '%s' "$BASE_COMMANDS" ;;
         macro) printf '%s' "$BASE_MACRO" ;;
+        terminalDisplay) printf '%s' "$BASE_TERMINAL_DISPLAY" ;;
         *) return 1 ;;
     esac
 }
@@ -785,6 +793,7 @@ update_setting_baseline() {
         jump) BASE_JUMP=$2 ;; askme) BASE_ASKME=$2 ;;
         mapchars) BASE_MAPCHARS=$2 ;; commands) BASE_COMMANDS=$2 ;;
         macro) BASE_MACRO=$2 ;;
+        terminalDisplay) BASE_TERMINAL_DISPLAY=$2 ;;
         *) return 1 ;;
     esac
 }
@@ -802,6 +811,7 @@ normalize_game_settings() {
     case "$S_MAPCHARS" in '拡張'|'基本') : ;; *) S_MAPCHARS='拡張' ;; esac
     case "$S_COMMANDS" in '5.4風'|'DOS 1.48風') : ;; *) S_COMMANDS='5.4風' ;; esac
     [ -n "$S_MACRO" ] || S_MACRO=v
+    case "$S_TERMINAL_DISPLAY" in normal|white|green|amber) : ;; *) S_TERMINAL_DISPLAY=normal ;; esac
 }
 # Read all version settings through the same schema used when saving.
 # 3.6 and 5.2 have mode-dependent defaults that the GUI reapplies on load.
@@ -818,6 +828,7 @@ load_game_settings() {
     S_MAPCHARS=$(read_game_setting mapchars)
     S_COMMANDS=$(read_game_setting commands)
     S_MACRO=$(read_game_setting macro)
+    S_TERMINAL_DISPLAY=$(read_game_setting terminalDisplay)
     normalize_game_settings
     # Do not overwrite stored values here.
     if [ "$GAME_ID" = 36 ] || [ "$GAME_ID" = 52 ] || [ "$GAME_ID" = 34 ]; then
@@ -856,7 +867,7 @@ save_game_settings() {
     # Write only fields changed since load (matching the AppleScript GUI).
     # In particular, selecting one setting or switching modes must not write
     # stale copies of unrelated options that the GUI might have just changed.
-    for gs_save_field in mode language color idscrl terse passgo jump askme mapchars commands macro; do
+    for gs_save_field in mode language color idscrl terse passgo jump askme mapchars commands macro terminalDisplay; do
         gs_save_value=$(game_setting_value "$gs_save_field") || return 1
         gs_save_before=$(baseline_setting_value "$gs_save_field") || return 1
         [ "$gs_save_value" != "$gs_save_before" ] || continue
@@ -868,12 +879,14 @@ save_game_settings() {
         fi
         # The GUI also keeps the old, non-versioned fallback in sync, but
         # only for a field the user actually changed.
-        if ! write_profile_value "Saved${gs_save_suffix}" "$gs_save_value"; then
-            report_partial_settings
-            return 1
+        if [ "$gs_save_field" != terminalDisplay ]; then
+            if ! write_profile_value "Saved${gs_save_suffix}" "$gs_save_value"; then
+                report_partial_settings
+                return 1
+            fi
         fi
         update_setting_baseline "$gs_save_field" "$gs_save_value" || return 1
-        mark_version_edited
+        [ "$gs_save_field" = terminalDisplay ] || mark_version_edited
     done
     return 0
 }
@@ -903,8 +916,8 @@ fields_for_version() {
         54) printf '%s' 'color idscrl terse passgo' ;;
         clone) printf '%s' 'color passgo jump' ;;
         dos) printf '%s' 'color mapchars commands macro terse' ;;
-        36) printf '%s' 'terse jump askme' ;;
-        34) printf '%s' 'terse jump askme' ;;
+        36) printf '%s' 'terse jump askme terminalDisplay' ;;
+        34) printf '%s' 'terse jump askme terminalDisplay' ;;
         52) printf '%s' 'color passgo terse askme' ;;
     esac
 }
@@ -919,6 +932,7 @@ field_label() {
         mapchars) [ "$LANG_JA" -eq 1 ] && printf 'マップ文字' || printf 'Map characters' ;;
         commands) [ "$LANG_JA" -eq 1 ] && printf 'キー操作' || printf 'Key bindings' ;;
         macro) [ "$LANG_JA" -eq 1 ] && printf 'マクロ' || printf 'Macro' ;;
+        terminalDisplay) [ "$LANG_JA" -eq 1 ] && printf '端末表示' || printf 'Terminal color' ;;
     esac
 }
 display_setting_value() {
@@ -942,6 +956,14 @@ display_field_value() {
     case "$1:$LANG_JA:$2" in
         jump:1:True|askme:1:True) printf '有効' ;;
         jump:1:False|askme:1:False) printf '無効' ;;
+        terminalDisplay:1:normal) printf '通常' ;;
+        terminalDisplay:1:white) printf '白色モノクロ' ;;
+        terminalDisplay:1:green) printf '緑色モノクロ' ;;
+        terminalDisplay:1:amber) printf 'アンバー' ;;
+        terminalDisplay:0:normal) printf 'Terminal setting' ;;
+        terminalDisplay:0:white) printf 'White monochrome' ;;
+        terminalDisplay:0:green) printf 'Green monochrome' ;;
+        terminalDisplay:0:amber) printf 'Amber monochrome' ;;
         *) display_setting_value "$2" ;;
     esac
 }
@@ -963,6 +985,7 @@ field_options() {
         jump|askme) printf '%s\n' True False ;;
         mapchars) printf '%s\n' 拡張 基本 ;;
         commands) printf '%s\n' '5.4風' 'DOS 1.48風' ;;
+        terminalDisplay) printf '%s\n' normal white green amber ;;
     esac
 }
 assign_field() {
@@ -971,6 +994,7 @@ assign_field() {
         passgo) S_PASSGO=$2 ;; jump) S_JUMP=$2 ;; askme) S_ASKME=$2 ;;
         mapchars) S_MAPCHARS=$2 ;; commands) S_COMMANDS=$2 ;;
         macro) S_MACRO=$2 ;;
+        terminalDisplay) S_TERMINAL_DISPLAY=$2 ;;
     esac
 }
 edit_game_field() {
@@ -992,11 +1016,16 @@ edit_game_field() {
         done
         if [ "$LANG_JA" -eq 1 ]; then printf '\n%s' '選択（空欄でキャンセル）› '; else printf '\n%s' 'Select (blank cancels) › '; fi
         read_selection || return 1
-        case "$ANSWER" in 1|2) : ;; *) return 0 ;; esac
+        case "$ANSWER" in
+            1|2) : ;;
+            3|4) [ "$field" = terminalDisplay ] || return 0 ;;
+            *) return 0 ;;
+        esac
         selected=$(field_options "$field" | sed -n "${ANSWER}p")
         assign_field "$field" "$selected"
     fi
-    S_MODE='細かく設定'
+    # CRT colors are an independent display preference, never a game-rule preset.
+    [ "$field" = terminalDisplay ] || S_MODE='細かく設定'
     if ! save_game_settings; then wait_for_return || :; return 1; fi
     return 0
 }
@@ -2114,6 +2143,81 @@ ensure_game_directory() {
     fi
     return 0
 }
+
+# Resolve the shipped AppleScript helper when invoked through a Homebrew symlink
+# or directly from a source checkout. No extra files or Terminal profiles created.
+find_crt_helper() {
+    [ -n "$CRT_HELPER" ] && [ -r "$CRT_HELPER" ] && return 0
+    crt_path=$0
+    case "$crt_path" in */*) : ;; *) crt_path=$(command -v "$crt_path") || return 1 ;; esac
+    while [ -L "$crt_path" ]; do
+        crt_link_dir=$(cd -P "$(dirname "$crt_path")" && pwd) || return 1
+        crt_link=$(readlink "$crt_path") || return 1
+        case "$crt_link" in
+            /*) crt_path=$crt_link ;;
+            *) crt_path=$crt_link_dir/$crt_link ;;
+        esac
+    done
+    crt_bin_dir=$(cd -P "$(dirname "$crt_path")" && pwd) || return 1
+    if [ -r "$crt_bin_dir/../libexec/rogue-crt-tab.applescript" ]; then
+        CRT_HELPER=$crt_bin_dir/../libexec/rogue-crt-tab.applescript
+    elif [ -r "$crt_bin_dir/rogue-crt-tab.applescript" ]; then
+        CRT_HELPER=$crt_bin_dir/rogue-crt-tab.applescript
+    else
+        return 1
+    fi
+}
+
+apply_game_crt_colors() {
+    CRT_TTY='' CRT_SNAPSHOT='' CRT_MODE=''
+    case "$GAME_ID:$S_TERMINAL_DISPLAY" in
+        34:white|34:green|34:amber|36:white|36:green|36:amber) : ;;
+        *) return 0 ;;
+    esac
+    # Never touch remote sessions or another terminal emulator.
+    if [ "${TERM_PROGRAM:-}" != Apple_Terminal ] || [ -n "${SSH_TTY:-}" ]; then
+        return 0
+    fi
+    if ! find_crt_helper; then
+        printf '%s\n' 'CRT color helper not installed; using normal Terminal colors.' >&2
+        return 0
+    fi
+    crt_tty_candidate=$(tty 2>/dev/null) || return 0
+    case "$crt_tty_candidate" in /dev/tty*) : ;; *) return 0 ;; esac
+    crt_snapshot_candidate=$(/usr/bin/osascript "$CRT_HELPER" apply-tty "$S_TERMINAL_DISPLAY" "$crt_tty_candidate" 2>/dev/null) || {
+        printf '%s\n' 'Unable to apply CRT colors; using current Terminal colors.' >&2
+        return 0
+    }
+    # The AppleScript validates before applying. Validate transport as well.
+    if ! printf '%s\n' "$crt_snapshot_candidate" | LC_ALL=C grep -Eq '^[0-9]+( [0-9]+){11}$'; then
+        /usr/bin/osascript "$CRT_HELPER" reset-tty "$crt_tty_candidate" >/dev/null 2>&1 || :
+        printf '%s\n' 'CRT snapshot failed validation; restored profile colors.' >&2
+        return 0
+    fi
+    CRT_TTY=$crt_tty_candidate
+    CRT_SNAPSHOT=$crt_snapshot_candidate
+    CRT_MODE=$S_TERMINAL_DISPLAY
+}
+
+restore_game_crt_colors() {
+    [ -n "$CRT_SNAPSHOT" ] || return 0
+    # Clear state before the external call; avoid a second restoration on EXIT.
+    crt_restore_tty=$CRT_TTY
+    crt_restore_snapshot=$CRT_SNAPSHOT
+    crt_restore_mode=$CRT_MODE
+    CRT_TTY='' CRT_SNAPSHOT='' CRT_MODE=''
+    crt_restore_result=$(/usr/bin/osascript "$CRT_HELPER" restore-tty "$crt_restore_tty" "$crt_restore_snapshot" "$crt_restore_mode" 2>&1)
+    crt_restore_status=$?
+    if [ "$crt_restore_status" -ne 0 ]; then
+        printf '\nCRT color restore failed: %s\n' "$crt_restore_result" >&2
+    else
+        case "$crt_restore_result" in
+            SKIPPED:*) printf '%s\n' "$crt_restore_result" >&2 ;;
+        esac
+    fi
+    return 0
+}
+
 # Return 3 only if no game was started (not a Rogue process exit code).
 run_selected_game() {
     ensure_game_directory || return 3
@@ -2123,6 +2227,9 @@ run_selected_game() {
     fi
     # Refresh the login-shell environment immediately before each launch.
     EXTERNAL_ROGUEOPTS=$(read_external_rogueopts)
+    # Read the latest GUI-shared display choice even for resume/CLI launches.
+    load_game_settings
+    apply_game_crt_colors
     clear_terminal_screen
     launch_game_process "$@"
     result=$?
@@ -2138,8 +2245,12 @@ run_selected_game() {
         if [ -t 1 ]; then
             printf '\033[24;1H\033[2K'
         fi
-        wait_for_return || return 1
+        if ! wait_for_return; then
+            restore_game_crt_colors
+            return 1
+        fi
     fi
+    restore_game_crt_colors
     return 0
 }
 
