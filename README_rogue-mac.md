@@ -26,7 +26,7 @@ Enter a number or letter in the menu, then press Return.
 | `S` | Change game settings |
 | `Q` | Quit |
 
-The menu preserves your Terminal profile's background. Use `rogue-mac --mono` to keep your Terminal's default text colors as well.
+The normal menu uses a dark CRT-style background even with a light Terminal profile. Rogue itself follows each game's display settings, and the launcher restores the Terminal's normal appearance when it exits. To use your Terminal's default text and background colors for the menu, launch with `rogue-mac --mono`.
 
 ## Guidebooks
 

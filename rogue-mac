@@ -1,8 +1,8 @@
 #!/bin/sh
-# Rogue for macOS - terminal launcher (0.3.28)
+# Rogue for macOS - terminal launcher (0.3.30)
 # Shell-only interface; game files stay in the same directories as the GUI launcher.
 
-VERSION=0.3.28
+VERSION=0.3.30
 BASE_DIR="${HOME:?HOME must be set}/Library/Application Support/Rogue"
 # Both the AppleScript GUI and this launcher use NSUserDefaults suite
 # "com.leopard.rogue". The defaults utility shares its preference domain.
@@ -397,8 +397,9 @@ ROGUE_MAC_LINE_EDITOR
     return "$line_status"
 }
 
-# Paint the entire terminal grid while keeping the user's Terminal background.
-# Use SGR 49 (default background), never force black with SGR 40.
+# The colored CUI menu always uses the Rogue White CRT background, regardless of whether
+# Terminal.app is using a light or dark profile. SGR 49 would expose a white
+# profile background behind our pale menu text. --mono is deliberately exempt.
 # Screen dimensions are read without consuming input or changing tty modes.
 clear_screen() {
     if terminal_has_ansi; then
@@ -416,7 +417,14 @@ clear_screen() {
             printf '%s\033[2J\033[H' "$RST"
             screen_row=1
             while [ "$screen_row" -le "$screen_rows" ]; do
-                printf '\033[%d;1H%*s' "$screen_row" "$screen_cols" ''
+                if [ "$screen_row" -eq "$screen_rows" ]; then
+                    # Do not write the bottom-right cell: autowrap there may
+                    # scroll the entire menu. Erase that last cell using the
+                    # active CRT background instead.
+                    printf '\033[%d;1H%*s\033[K' "$screen_row" "$((screen_cols - 1))" ''
+                else
+                    printf '\033[%d;1H%*s' "$screen_row" "$screen_cols" ''
+                fi
                 screen_row=$((screen_row + 1))
             done
             printf '\033[H'
@@ -427,8 +435,8 @@ clear_screen() {
     fi
 }
 
-# Leave terminal colors and background untouched when Rogue takes over and
-# when printing the farewell. Never leave painted black cells behind on exit.
+# Reset the CUI menu's painted CRT background before handing control to
+# Rogue, and again before the final goodbye message. Never alter the profile.
 clear_terminal_screen() {
     reset_screen_colors
     if terminal_has_ansi; then
@@ -440,13 +448,14 @@ init_colors() {
     COLORS=0 GOLD='' TITLE='' TEXT='' DIM='' SAVE_COLOR='' RST=''
     if [ "$UI_MONO" -eq 0 ] && terminal_has_ansi; then
         COLORS=1
-        # Match the Terminal profile's exact background, including dark gray.
-        # SGR 49 avoids the colored-text background looking like black patches.
-        RST=$(printf '\033[0;38;5;252;49m')
-        GOLD=$(printf '\033[38;5;180m')
-        TITLE=$(printf '\033[38;5;223m')
-        TEXT=$(printf '\033[38;5;252m')
-        DIM=$(printf '\033[38;5;109m')
+        # Rogue White CRT background (#070808) even if the Terminal profile is light.
+        # Explicit RGB avoids dependence on the profile's ANSI color palette.
+        # Keep it active across styled text and input prompts (no SGR 49).
+        RST=$(printf '\033[0;38;2;210;220;232;48;2;7;8;8m')
+        GOLD=$(printf '\033[38;2;229;160;0m')
+        TITLE=$(printf '\033[38;2;229;160;0m')
+        TEXT=$(printf '\033[38;2;210;220;232m')
+        DIM=$(printf '\033[38;2;43;184;79m')
         SAVE_COLOR=$DIM
     fi
 }
@@ -1780,14 +1789,14 @@ show_main_menu() {
     fruit=$(clean_text "$PLAYER_FRUIT")
     if [ "$LANG_JA" -eq 1 ]; then
         printf '\n  %sやあ、%s。運命の洞窟へようこそ・・・%s\n' "$TEXT" "$player" "$RST"
-        printf '\n%s   好きな果物:%s %s%s\n' "$DIM" "$TEXT" "$fruit" "$RST"
+        printf '\n%s   好きな果物:%s %s%s\n' "$TEXT" "$TEXT" "$fruit" "$RST"
     else
         printf '\n  %sHello, %s. Welcome to the Dungeons of Doom...%s\n' "$TEXT" "$player" "$RST"
-        printf '\n%s   Favorite fruit:%s %s%s\n' "$DIM" "$TEXT" "$fruit" "$RST"
+        printf '\n%s   Favorite fruit:%s %s%s\n' "$TEXT" "$TEXT" "$fruit" "$RST"
     fi
-    printf '\n%s' "$DIM"; line52; printf '%s\n\n' "$RST"
+    printf '\n%s' "$TEXT"; line52; printf '%s\n\n' "$RST"
     show_version_entries saves
-    printf '\n%s' "$DIM"; line52; printf '%s\n' "$RST"
+    printf '\n%s' "$TEXT"; line52; printf '%s\n' "$RST"
     if [ "$LANG_JA" -eq 1 ]; then
         # G and Q share the same column; the first Japanese line is 52 cells wide.
         printf '   %sP%s  プレイヤー情報     %sG%s  【運命の洞窟】への案内書\n' "$GOLD" "$TEXT" "$GOLD" "$TEXT"
@@ -1828,7 +1837,7 @@ show_guide_menu() {
         else
             menu_heading 'A Guide to the Dungeons of Doom'
         fi
-        printf '%s' "$DIM"; line52; printf '%s\n\n' "$RST"
+        printf '%s' "$TEXT"; line52; printf '%s\n\n' "$RST"
         show_version_entries guides
         printf '\n  %sB%s  %s\n\n' "$GOLD" "$RST" "$(if [ "$LANG_JA" -eq 1 ]; then printf 'メインメニューへ戻る'; else printf 'Back to main menu'; fi)"
         if [ "$LANG_JA" -eq 1 ]; then
@@ -2256,7 +2265,7 @@ run_selected_game() {
 
 post_game_menu() {
     while :; do
-        # Remove Rogue's last curses colors and draw the black menu surface.
+        # Remove Rogue's last curses colors and repaint the black menu.
         clear_screen
         printf '\n'
         if [ "$LANG_JA" -eq 1 ]; then

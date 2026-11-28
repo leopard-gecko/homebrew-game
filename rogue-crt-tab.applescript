@@ -34,7 +34,7 @@ end run
 
 -- 16-bit RGB values: 8-bit sRGB components multiplied by 257.
 -- White (ADM-3A-inspired): #D2DCE8, background #070808
--- Green (P31-inspired):    #32D55C, background #040704
+-- Green (P31-inspired):    #2BB84F, background #040704
 -- Amber (CRT-inspired):    #E5A000, background #090702
 -- Cursor colors are DARK for legible text under a block cursor.
 -- Amber is a modern sRGB approximation, not a measured CRT phosphor color.
@@ -43,7 +43,7 @@ on colorsForMode(modeName)
     if modeName is "white" then
         return {{53970, 56540, 59624}, {59110, 60909, 62451}, {1799, 2056, 2056}, {18504, 23130, 27242}}
     else if modeName is "green" then
-        return {{12850, 54741, 23644}, {33924, 62965, 41120}, {1028, 1799, 1028}, {5397, 24415, 13107}}
+        return {{11051, 47288, 20303}, {33924, 62965, 41120}, {1028, 1799, 1028}, {5397, 24415, 13107}}
     else if modeName is "amber" then
         return {{58853, 41120, 0}, {65535, 50115, 19018}, {2313, 1799, 514}, {26214, 17733, 6168}}
     end if
