@@ -143,6 +143,6 @@ The [GUI version](https://leopard-gecko.github.io/jrogue/) and CUI version share
 
 ### Terminal colors for Rogue 3.4 and 3.6
 
-In **Game settings (S)** for Rogue 3.4 or 3.6, **Terminal color** offers Terminal setting, White monochrome, Green monochrome, and Amber monochrome. These colors recreate the look of vintage monochrome terminals, inspired by **white P4 phosphor**, **green P31 phosphor**, and **amber-colored phosphor**, respectively.
+In **Game settings (S)** for Rogue 3.4 or 3.6, **Terminal color** offers Terminal setting, White monochrome, Green monochrome, and Amber monochrome. These colors recreate the look of vintage monochrome terminals, inspired by **white P4 phosphor**, **green P31 phosphor**, and **P134 phosphor**, respectively.
 
 The setting is shared between the GUI and CUI launchers and saved separately for 3.4 and 3.6. On macOS Terminal.app, the colors are applied temporarily and restored after the post-game Return prompt. No new Terminal profile is created.
